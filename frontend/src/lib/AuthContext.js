@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { api } from '../lib/api'
 
 const AuthContext = createContext(null)
 
@@ -9,28 +8,42 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  async function loadProfile() {
+  async function loadProfile(userId) {
     try {
-      const data = await api.me()
-      setProfile(data)
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('id, role, status, anonymous_handle, created_at')
+        .eq('id', userId)
+        .single()
+
+      if (error) throw error
+
+      const { data: permissions } = await supabase
+        .from('brand_permissions')
+        .select('brand_id, brands(id, name, slug)')
+        .eq('user_id', userId)
+        .is('revoked_at', null)
+
+      setProfile({
+        ...data,
+        approvedBrands: permissions?.map(p => p.brands) || []
+      })
     } catch {
       setProfile(null)
     }
   }
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null)
-      if (session?.user) loadProfile().finally(() => setLoading(false))
+      if (session?.user) loadProfile(session.user.id).finally(() => setLoading(false))
       else setLoading(false)
     })
 
-    // Listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user || null)
-        if (session?.user) await loadProfile()
+        if (session?.user) await loadProfile(session.user.id)
         else setProfile(null)
       }
     )
@@ -41,7 +54,7 @@ export function AuthProvider({ children }) {
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    await loadProfile()
+    await loadProfile(data.user.id)
     return data
   }
 
