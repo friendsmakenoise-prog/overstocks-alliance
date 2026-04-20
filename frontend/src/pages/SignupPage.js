@@ -111,7 +111,7 @@ export default function SignupPage() {
                     <div>
                       <div style={{ fontWeight: 500, fontSize: 14, textTransform: 'capitalize' }}>{r}</div>
                       <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                        {r === 'retailer' ? 'Browse & buy overstock' : 'List & sell overstock'}
+                        {r === 'retailer' ? 'List, browse & buy overstock' : 'List & browse brand stock'}
                       </div>
                     </div>
                   </label>
