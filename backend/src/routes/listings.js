@@ -155,7 +155,7 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
   try {
     const {
       title, description, pricePounds, quantity,
-      brandId, shippingMode, shippingCostPounds, sku
+      brandId, shippingMode, shippingCostPounds, sku, imageUrls
     } = req.body
 
     // --- Validate inputs ---
@@ -207,6 +207,7 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
         shipping_mode: shippingMode,
         shipping_cost_pence: shippingCostPence,
         sku: sku ? xss(sku.trim()).substring(0, 100) : null,
+        image_urls: Array.isArray(imageUrls) ? imageUrls.slice(0, 4) : [],
         status: 'pending_review'  // Admin must approve before it goes live
       })
       .select('id, title, status, created_at')
