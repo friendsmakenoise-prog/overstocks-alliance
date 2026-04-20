@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 
 export default function Nav() {
-  const { profile, signOut } = useAuth()
+  const { user, profile, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -11,7 +11,7 @@ export default function Nav() {
     navigate('/login')
   }
 
-  const isActive = (path) => location.pathname.startsWith(path) ? 'nav-link active' : 'nav-link'
+  const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
 
   return (
     <nav className="nav">
@@ -21,20 +21,30 @@ export default function Nav() {
         </Link>
 
         <div className="nav-links">
-          {profile && (
+          {/* Always show sign out if there's any session at all */}
+          {user && (
             <>
-              <Link to="/listings" className={isActive('/listings')}>Browse</Link>
+              {profile && (
+                <>
+                  <Link to="/listings" className={isActive('/listings')}>Browse</Link>
 
-              {(profile.role === 'supplier' || profile.role === 'retailer') && (
-                <Link to="/listings/new" className={isActive('/listings/new')}>+ New listing</Link>
+                  {(profile.role === 'supplier' || profile.role === 'retailer') && (
+                    <Link to="/listings/new" className={isActive('/listings/new')}>+ New listing</Link>
+                  )}
+
+                  {(profile.role === 'supplier' || profile.role === 'retailer') && (
+                    <Link to="/my-listings" className={isActive('/my-listings')}>My listings</Link>
+                  )}
+
+                  {profile.role === 'admin' && (
+                    <Link to="/admin" className={isActive('/admin')}>Admin</Link>
+                  )}
+
+                  <span className="nav-handle">{profile.anonymous_handle}</span>
+                </>
               )}
 
-              {profile.role === 'admin' && (
-                <Link to="/admin" className={isActive('/admin')}>Admin</Link>
-              )}
-
-              <span className="nav-handle">{profile.anonymous_handle}</span>
-
+              {/* Sign out always visible when logged in, even if profile fails to load */}
               <button
                 onClick={handleSignOut}
                 className="nav-link"
