@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from './supabase'
 
 const AuthContext = createContext(null)
 
@@ -28,7 +28,8 @@ export function AuthProvider({ children }) {
         ...data,
         approvedBrands: permissions?.map(p => p.brands) || []
       })
-    } catch {
+    } catch (err) {
+      console.error('loadProfile error:', err)
       setProfile(null)
     }
   }
