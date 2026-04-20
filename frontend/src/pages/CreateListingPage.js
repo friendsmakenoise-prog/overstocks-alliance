@@ -75,7 +75,7 @@ export default function CreateListingPage() {
         </h1>
         <p style={{ color: 'var(--slate)', marginBottom: 28 }}>
           Your listing will be reviewed by our team before going live.
-          Your identity will never be shown to buyers.
+          Your identity will never be shown to other users.
         </p>
 
         {error && <div className="alert alert-error">{error}</div>}
