@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
         approvedBrands: permissions?.map(p => p.brands) || []
       })
     } catch (err) {
-      console.error('loadProfile error:', err)
+      console.error('loadProfile error full details:', JSON.stringify(err))
       setProfile(null)
     } finally {
       setLoading(false)
