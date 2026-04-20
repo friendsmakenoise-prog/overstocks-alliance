@@ -41,7 +41,7 @@ export default function App() {
           } />
 
           <Route path="/listings/new" element={
-            <ProtectedRoute roles={['supplier']}>
+            <ProtectedRoute roles={['supplier', 'retailer']}>
               <Layout><CreateListingPage /></Layout>
             </ProtectedRoute>
           } />
