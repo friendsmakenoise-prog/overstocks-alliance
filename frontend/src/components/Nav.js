@@ -25,8 +25,8 @@ export default function Nav() {
             <>
               <Link to="/listings" className={isActive('/listings')}>Browse</Link>
 
-              {profile.role === 'supplier' && (
-                <Link to="/listings/new" className={isActive('/listings/new')}>+ New Listing</Link>
+              {(profile.role === 'supplier' || profile.role === 'retailer') && (
+                <Link to="/listings/new" className={isActive('/listings/new')}>+ New listing</Link>
               )}
 
               {profile.role === 'admin' && (
