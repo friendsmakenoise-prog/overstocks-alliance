@@ -151,7 +151,7 @@ router.get('/:id', requireAuth, async (req, res) => {
  * POST /api/listings
  * Create a new listing. Suppliers only.
  */
-router.post('/', requireAuth, requireRole('supplier'), async (req, res) => {
+router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, res) => {
   try {
     const {
       title, description, pricePounds, quantity,
