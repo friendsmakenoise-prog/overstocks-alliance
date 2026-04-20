@@ -65,7 +65,7 @@ export function AuthProvider({ children }) {
     // Safety net — never spin forever
     const timeout = setTimeout(() => {
       if (mounted) setLoading(false)
-    }, 5000)
+    }, 8000)
 
     return () => {
       mounted = false
