@@ -8,6 +8,7 @@ import { PendingPage, AccessDeniedPage } from './pages/HoldingPages'
 import ListingsPage from './pages/ListingsPage'
 import ListingDetailPage from './pages/ListingDetailPage'
 import CreateListingPage from './pages/CreateListingPage'
+import MyListingsPage from './pages/MyListingsPage'
 import AdminPage from './pages/AdminPage'
 import './styles/global.css'
 
@@ -37,6 +38,12 @@ export default function App() {
           <Route path="/listings" element={
             <ProtectedRoute>
               <Layout><ListingsPage /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/my-listings" element={
+            <ProtectedRoute roles={['supplier', 'retailer']}>
+              <Layout><MyListingsPage /></Layout>
             </ProtectedRoute>
           } />
 
