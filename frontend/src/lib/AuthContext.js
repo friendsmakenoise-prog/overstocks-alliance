@@ -31,25 +31,47 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('loadProfile error:', err)
       setProfile(null)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
+    let mounted = true
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return
       setUser(session?.user || null)
-      if (session?.user) loadProfile(session.user.id).finally(() => setLoading(false))
-      else setLoading(false)
+      if (session?.user) {
+        loadProfile(session.user.id)
+      } else {
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return
         setUser(session?.user || null)
-        if (session?.user) await loadProfile(session.user.id)
-        else setProfile(null)
+        if (session?.user) {
+          await loadProfile(session.user.id)
+        } else {
+          setProfile(null)
+          setLoading(false)
+        }
       }
     )
 
-    return () => subscription.unsubscribe()
+    // Safety net — never spin forever
+    const timeout = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 5000)
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function signIn(email, password) {
@@ -63,6 +85,7 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
+    setLoading(false)
   }
 
   return (
