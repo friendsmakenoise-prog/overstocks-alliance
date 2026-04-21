@@ -43,12 +43,24 @@ router.get('/users', async (req, res) => {
 
 /**
  * POST /api/admin/users/:id/approve
- * Approve a pending user
+ * Approve a pending user and confirm their email simultaneously
  */
 router.post('/users/:id/approve', async (req, res) => {
   try {
     const { id } = req.params
 
+    // Step 1: Confirm their email via Supabase auth admin API
+    // This allows them to log in immediately without a separate email confirmation
+    const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(id, {
+      email_confirm: true
+    })
+
+    if (confirmError) {
+      console.error('Email confirmation error:', confirmError)
+      // Don't block approval if this fails — log it and continue
+    }
+
+    // Step 2: Update their profile status to approved
     const { data: user, error } = await supabaseAdmin
       .from('user_profiles')
       .update({
@@ -385,5 +397,7 @@ router.get('/reports', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch reports' })
   }
 })
+
+module.exports = router
 
 module.exports = router
