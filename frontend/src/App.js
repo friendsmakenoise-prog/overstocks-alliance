@@ -9,6 +9,9 @@ import ListingsPage from './pages/ListingsPage'
 import ListingDetailPage from './pages/ListingDetailPage'
 import CreateListingPage from './pages/CreateListingPage'
 import MyListingsPage from './pages/MyListingsPage'
+import OffersPage from './pages/OffersPage'
+import OrderPage from './pages/OrderPage'
+import PaymentSettingsPage from './pages/PaymentSettingsPage'
 import AdminPage from './pages/AdminPage'
 import './styles/global.css'
 
@@ -38,6 +41,24 @@ export default function App() {
           <Route path="/listings" element={
             <ProtectedRoute>
               <Layout><ListingsPage /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/offers" element={
+            <ProtectedRoute>
+              <Layout><OffersPage /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/orders/:id" element={
+            <ProtectedRoute>
+              <Layout><OrderPage /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings/payments" element={
+            <ProtectedRoute roles={['supplier', 'retailer']}>
+              <Layout><PaymentSettingsPage /></Layout>
             </ProtectedRoute>
           } />
 
