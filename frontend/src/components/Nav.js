@@ -36,6 +36,8 @@ export default function Nav() {
                     <Link to="/my-listings" className={isActive('/my-listings')}>My listings</Link>
                   )}
 
+                  <Link to="/offers" className={isActive('/offers')}>Offers</Link>
+
                   {profile.role === 'admin' && (
                     <Link to="/admin" className={isActive('/admin')}>Admin</Link>
                   )}
