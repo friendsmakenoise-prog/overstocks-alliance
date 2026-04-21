@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 
 function formatPrice(pence) {
@@ -37,11 +36,8 @@ export default function AdminPage() {
       setListings(l.listings)
       setReports(r.reports)
 
-      const { data: allUsersData } = await supabase
-        .from('user_profiles')
-        .select('id, email, role, status, company_name, contact_name, anonymous_handle, created_at')
-        .order('created_at', { ascending: false })
-      setAllUsers(allUsersData || [])
+      const allUsersResp = await api.admin.getUsers()
+      setAllUsers(allUsersResp.users || [])
 
     } catch (err) {
       setError('Failed to load admin data')
