@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/AuthContext'
+import OfferModal from '../components/OfferModal'
 
 function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
@@ -9,11 +11,13 @@ function formatPrice(pence) {
 export default function ListingDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const [listing, setListing] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reportReason, setReportReason] = useState('')
   const [reportSent, setReportSent] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const [showOfferModal, setShowOfferModal] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -168,14 +172,20 @@ export default function ListingDetailPage() {
                 🔒 Seller identity is protected. You'll connect through our secure platform only.
               </div>
 
-              {/* CTA — placeholder for Stage 3 checkout */}
-              <button
-                className="btn btn-gold btn-lg"
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={() => alert('Checkout coming in Stage 3 — Stripe integration')}
-              >
-                Make an offer
-              </button>
+              {/* CTA — opens offer modal */}
+              {listing.seller_id !== profile?.id ? (
+                <button
+                  className="btn btn-gold btn-lg"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => setShowOfferModal(true)}
+                >
+                  Buy now / Make an offer
+                </button>
+              ) : (
+                <div style={{ padding: '10px 14px', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+                  This is your listing
+                </div>
+              )}
 
               {/* Anonymous seller handle */}
               <div style={{
@@ -225,6 +235,12 @@ export default function ListingDetailPage() {
           </div>
         </div>
       </div>
+      {showOfferModal && (
+        <OfferModal
+          listing={{ ...listing, anonymous_handle: listing.anonymous_handle }}
+          onClose={() => setShowOfferModal(false)}
+        />
+      )}
     </div>
   )
 }
