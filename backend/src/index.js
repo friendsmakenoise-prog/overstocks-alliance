@@ -7,6 +7,8 @@ const rateLimit = require('express-rate-limit')
 const authRoutes = require('./routes/auth')
 const listingsRoutes = require('./routes/listings')
 const adminRoutes = require('./routes/admin')
+const offersRoutes = require('./routes/offers')
+const paymentsRoutes = require('./routes/payments')
 
 const app = express()
 
@@ -56,6 +58,8 @@ app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().
 app.use('/api/auth', authLimiter, authRoutes)
 app.use('/api/listings', listingsRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/offers', offersRoutes)
+app.use('/api/payments', paymentsRoutes)
 
 // 404 handler
 app.use((req, res) => {
