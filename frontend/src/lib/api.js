@@ -48,6 +48,20 @@ export const api = {
   createListing: (data)  => apiRequest('POST', '/api/listings', data),
   reportListing: (id, reason) => apiRequest('POST', `/api/listings/${id}/report`, { reason }),
 
+  // Offers
+  getOffers:      ()             => apiRequest('GET', '/api/offers'),
+  createOffer:    (data)         => apiRequest('POST', '/api/offers', data),
+  counterOffer:   (id, data)     => apiRequest('POST', `/api/offers/${id}/counter`, data),
+  acceptOffer:    (id)           => apiRequest('POST', `/api/offers/${id}/accept`),
+  declineOffer:   (id)           => apiRequest('POST', `/api/offers/${id}/decline`),
+  getMessages:    (id)           => apiRequest('GET', `/api/offers/${id}/messages`),
+  sendMessage:    (id, content)  => apiRequest('POST', `/api/offers/${id}/messages`, { content }),
+
+  // Payments
+  createCheckout:       (offerId)  => apiRequest('POST', '/api/payments/checkout', { offerId }),
+  getConnectStatus:     ()         => apiRequest('GET', '/api/payments/connect/status'),
+  startConnectOnboard:  ()         => apiRequest('POST', '/api/payments/connect/onboard'),
+
   // Admin
   admin: {
     getUsers:      (params = {}) => apiRequest('GET', '/api/admin/users?' + new URLSearchParams(params)),
