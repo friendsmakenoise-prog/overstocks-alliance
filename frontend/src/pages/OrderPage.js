@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
+import { getCounterpartyCodename, getMyCodename } from '../lib/codenames'
 
 function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
@@ -20,7 +21,6 @@ export default function OrderPage() {
   const messagesEndRef = useRef(null)
 
   const isSuccess = new URLSearchParams(location.search).get('success')
-  const isBuyer = offer?.buyer?.id === profile?.id
 
   useEffect(() => { loadOrder() }, [id])
   useEffect(() => {
@@ -75,6 +75,10 @@ export default function OrderPage() {
 
   const totalGoods = (offer.agreed_price_pence || offer.offered_price_pence) * offer.quantity
   const totalCharge = totalGoods + offer.shipping_cost_pence
+  const isBuyer = offer.buyer?.id === profile?.id
+  const counterpartyId = isBuyer ? offer.seller?.id : offer.buyer?.id
+  const counterpartyCodename = getCounterpartyCodename(offer.id, counterpartyId || '')
+  const myCodename = getMyCodename(offer.id, profile?.id || '')
 
   return (
     <div className="page">
@@ -100,7 +104,10 @@ export default function OrderPage() {
             {offer.status === 'paid' ? (
               <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', fontWeight: 500, fontSize: 14 }}>
-                  Messages with {isBuyer ? offer.seller?.anonymous_handle : offer.buyer?.anonymous_handle}
+                  Messages with <span style={{ color: 'var(--gold)' }}>{counterpartyCodename}</span>
+                  <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 8, fontWeight: 400 }}>
+                    · You appear as {myCodename} · one-time aliases only
+                  </span>
                 </div>
 
                 {/* Message thread */}
@@ -122,8 +129,8 @@ export default function OrderPage() {
                             fontSize: 14, lineHeight: 1.5
                           }}>
                             {!isMe && (
-                              <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4, color: 'var(--muted)', opacity: isMe ? 0.7 : 1 }}>
-                                {msg.sender?.anonymous_handle}
+                              <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 4, opacity: 0.8 }}>
+                                {counterpartyCodename}
                               </div>
                             )}
                             {msg.content}
@@ -162,7 +169,7 @@ export default function OrderPage() {
                 <div style={{ fontSize: 32, marginBottom: 12 }}>🔒</div>
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 8 }}>Messages unlock after payment</h3>
                 <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-                  Once payment is confirmed, you'll be able to message the {isBuyer ? 'seller' : 'buyer'} to coordinate delivery and logistics.
+                  Once payment is confirmed, a private message thread opens between you and your counterparty. Both parties use one-time codenames — no real identities are exchanged through the platform.
                 </p>
               </div>
             )}
