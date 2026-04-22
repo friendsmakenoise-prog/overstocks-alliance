@@ -28,68 +28,29 @@ export function AuthProvider({ children }) {
         ...data,
         approvedBrands: permissions?.map(p => p.brands) || []
       })
+      return true
     } catch (err) {
       console.error('loadProfile error:', err)
       setProfile(null)
+      return false
     }
   }
 
   useEffect(() => {
     let mounted = true
 
-    // Hard timeout — if nothing resolves in 5 seconds, stop spinning
-    // This prevents infinite loading on slow or dropped connections
-    const hardTimeout = setTimeout(() => {
-      if (mounted && loading) {
-        console.warn('Auth timeout — forcing loading to false')
-        setLoading(false)
-      }
-    }, 5000)
-
-    async function init() {
-      try {
-        // Race getSession against a 4 second timeout
-        const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Session fetch timeout')), 4000)
-          )
-        ])
-
-        if (!mounted) return
-
-        const session = sessionResult?.data?.session
-
-        if (session?.user) {
-          setUser(session.user)
-          await loadProfile(session.user.id)
-        } else {
-          setUser(null)
-          setProfile(null)
-        }
-      } catch (err) {
-        // Timeout or network error — clear session and let user log in
-        console.warn('Auth init issue:', err.message)
-        if (mounted) {
-          setUser(null)
-          setProfile(null)
-        }
-      } finally {
-        if (mounted) {
-          clearTimeout(hardTimeout)
-          setLoading(false)
-        }
-      }
-    }
-
-    init()
-
+    // onAuthStateChange fires reliably on every page load, including
+    // after Stripe redirects and browser back/forward navigation.
+    // INITIAL_SESSION is the event we get when Supabase restores a
+    // saved session — we wait for this before setting loading=false.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return
 
         if (session?.user) {
           setUser(session.user)
+          // Load profile on initial session restore and sign in
+          // Skip on token refresh to avoid unnecessary re-renders
           if (event !== 'TOKEN_REFRESHED') {
             await loadProfile(session.user.id)
           }
@@ -97,12 +58,22 @@ export function AuthProvider({ children }) {
           setUser(null)
           setProfile(null)
         }
+
+        // Mark loading complete after first auth event fires
+        // This covers both "has session" and "no session" cases
+        if (mounted) setLoading(false)
       }
     )
 
+    // Backstop — if onAuthStateChange never fires (e.g. network issue)
+    // stop the spinner after 10 seconds so user isn't stuck forever
+    const backstop = setTimeout(() => {
+      if (mounted) setLoading(false)
+    }, 10000)
+
     return () => {
       mounted = false
-      clearTimeout(hardTimeout)
+      clearTimeout(backstop)
       subscription.unsubscribe()
     }
   }, [])
@@ -110,6 +81,8 @@ export function AuthProvider({ children }) {
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
+    // onAuthStateChange will fire SIGNED_IN and load the profile
+    // but we also load it here so the UI updates immediately
     await loadProfile(data.user.id)
     return data
   }
@@ -118,7 +91,6 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
-    setLoading(false)
   }
 
   return (
