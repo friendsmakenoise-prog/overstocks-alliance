@@ -14,6 +14,7 @@ import OffersPage from './pages/OffersPage'
 import OrderPage from './pages/OrderPage'
 import PaymentSettingsPage from './pages/PaymentSettingsPage'
 import AdminPage from './pages/AdminPage'
+import AdminFinancePage from './pages/AdminFinancePage'
 import './styles/global.css'
 
 function Layout({ children }) {
@@ -91,6 +92,12 @@ function AppRoutes() {
       } />
 
       {/* Admin */}
+      <Route path="/admin/finance" element={
+        <ProtectedRoute roles={['admin']}>
+          <Layout><AdminFinancePage /></Layout>
+        </ProtectedRoute>
+      } />
+
       <Route path="/admin/*" element={
         <ProtectedRoute roles={['admin']}>
           <Layout><AdminPage /></Layout>
