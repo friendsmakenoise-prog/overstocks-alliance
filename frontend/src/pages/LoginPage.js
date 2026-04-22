@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await signIn(email, password)
-      navigate('/listings')
+      navigate('/')
     } catch (err) {
       // Generic message — don't reveal whether email or password was wrong
       setError('Invalid email or password')
