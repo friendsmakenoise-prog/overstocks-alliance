@@ -58,6 +58,11 @@ router.post('/checkout', requireAuth, async (req, res) => {
     const platformFeePence = offer.platform_fee_pence || 0
     const shippingPence = offer.shipping_cost_pence || 0
 
+    // Total buyer pays = goods + shipping
+    // Seller receives = goods - platform fee + shipping
+    // Platform keeps = platform fee only
+    const totalBuyerPays = (unitPricePence * offer.quantity) + shippingPence
+
     if (!unitPricePence || unitPricePence <= 0) {
       return res.status(400).json({ error: 'Invalid offer price' })
     }
