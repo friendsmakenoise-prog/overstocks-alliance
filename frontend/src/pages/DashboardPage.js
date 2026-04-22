@@ -39,7 +39,8 @@ export default function DashboardPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(null)
   const [error, setError] = useState('')
 
-  useEffect(() => { loadAll() }, [])
+  // Profile is guaranteed to exist here — ProtectedRoute waits for it
+  useEffect(() => { loadAll() }, [profile?.id])
 
   async function loadAll() {
     setLoading(true)
