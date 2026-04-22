@@ -14,7 +14,8 @@ export default function PaymentSettingsPage() {
   const isSuccess = new URLSearchParams(location.search).get('success')
   const isRefresh = new URLSearchParams(location.search).get('refresh')
 
-  useEffect(() => { loadStatus() }, [])
+  // Profile is guaranteed here — ProtectedRoute waits for it
+  useEffect(() => { loadStatus() }, [profile?.id])
 
   async function loadStatus() {
     setLoading(true)
