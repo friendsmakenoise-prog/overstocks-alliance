@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './lib/AuthContext'
+import { AuthProvider } from './lib/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Nav from './components/Nav'
 import LoginPage from './pages/LoginPage'
@@ -27,30 +27,6 @@ function Layout({ children }) {
 
 // Separate component so it can use useAuth inside AuthProvider
 function AppRoutes() {
-  const { loading } = useAuth()
-
-  // Show a single full-page spinner while auth initialises
-  // This runs ONCE on app load and never again
-  if (loading) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        background: 'var(--surface)'
-      }}>
-        <div style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: 24, marginBottom: 24,
-          color: 'var(--navy)'
-        }}>
-          Overstocks <span style={{ color: 'var(--gold)' }}>Alliance</span>
-        </div>
-        <div className="spinner" />
-      </div>
-    )
-  }
-
   return (
     <Routes>
       {/* Public routes */}
