@@ -222,7 +222,7 @@ router.get('/connect/status', requireAuth, async (req, res) => {
  * POST /api/payments/webhook
  * Handle Stripe webhook events
  */
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
   const sig = req.headers['stripe-signature']
 
   let event
