@@ -177,7 +177,7 @@ export default function ListingsPage() {
                   </div>
 
                   <div className="listing-card-handle">
-                    Listed by {listing.anonymous_handle || 'Anonymous seller'}
+                    ✓ Verified seller
                   </div>
                 </div>
               </div>
