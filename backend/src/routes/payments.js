@@ -263,12 +263,12 @@ router.post('/webhook', express.raw({ type: '*/*' }), async (req, res) => {
             .single()
 
           if (listing) {
-            const newQty = listing.quantity - offer.quantity
+            const newQty = Math.max(1, listing.quantity - offer.quantity)
             await supabaseAdmin
               .from('listings')
               .update({
                 quantity: newQty,
-                status: newQty <= 0 ? 'sold' : 'active'
+                status: newQty <= offer.quantity ? 'sold' : 'active'
               })
               .eq('id', offer.listing_id)
           }
