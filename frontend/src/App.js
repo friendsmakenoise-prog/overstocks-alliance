@@ -5,6 +5,7 @@ import Nav from './components/Nav'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import { PendingPage, AccessDeniedPage } from './pages/HoldingPages'
+import DashboardPage from './pages/DashboardPage'
 import ListingsPage from './pages/ListingsPage'
 import ListingDetailPage from './pages/ListingDetailPage'
 import CreateListingPage from './pages/CreateListingPage'
@@ -34,8 +35,15 @@ export default function App() {
           <Route path="/signup" element={<SignupPage />} />
 
           {/* Holding pages (authenticated but not yet approved) */}
-          <Route path="/pending"      element={<PendingPage />} />
+          <Route path="/pending"       element={<PendingPage />} />
           <Route path="/access-denied" element={<AccessDeniedPage />} />
+
+          {/* Dashboard — default home after login */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Layout><DashboardPage /></Layout>
+            </ProtectedRoute>
+          } />
 
           {/* Protected routes */}
           <Route path="/listings" element={
@@ -86,9 +94,7 @@ export default function App() {
             </ProtectedRoute>
           } />
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/listings" replace />} />
-          <Route path="*" element={<Navigate to="/listings" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
