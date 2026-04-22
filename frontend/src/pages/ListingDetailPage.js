@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
 import OfferModal from '../components/OfferModal'
@@ -18,6 +19,7 @@ export default function ListingDetailPage() {
   const [reportSent, setReportSent] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [showOfferModal, setShowOfferModal] = useState(false)
+  const [salePending, setSalePending] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -25,6 +27,16 @@ export default function ListingDetailPage() {
       try {
         const data = await api.getListing(id)
         setListing(data.listing)
+
+        // Check if there's an accepted offer on this listing
+        const { data: acceptedOffers } = await supabase
+          .from('offers')
+          .select('id')
+          .eq('listing_id', id)
+          .eq('status', 'accepted')
+          .limit(1)
+
+        setSalePending(acceptedOffers && acceptedOffers.length > 0)
       } catch (err) {
         setError('This listing could not be found or you do not have access to it.')
       } finally {
@@ -173,7 +185,34 @@ export default function ListingDetailPage() {
               </div>
 
               {/* CTA — opens offer modal */}
-              {listing.seller_id !== profile?.id ? (
+              {listing.status === 'sold' ? (
+                <div style={{
+                  padding: '12px 16px', background: 'var(--surface)',
+                  borderRadius: 'var(--radius)', fontSize: 14,
+                  color: 'var(--muted)', textAlign: 'center',
+                  border: '1px solid var(--border)'
+                }}>
+                  ✓ This listing has been sold
+                </div>
+              ) : salePending ? (
+                <div>
+                  <div style={{
+                    padding: '12px 16px', background: 'var(--amber-bg)',
+                    borderRadius: 'var(--radius)', fontSize: 13,
+                    color: 'var(--amber)', textAlign: 'center',
+                    marginBottom: 10, border: '1px solid var(--gold)'
+                  }}>
+                    ⏳ Sale pending — an offer has been accepted and payment is awaited
+                  </div>
+                  <button
+                    className="btn btn-outline btn-lg"
+                    style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}
+                    disabled
+                  >
+                    Buy now / Make an offer
+                  </button>
+                </div>
+              ) : listing.seller_id !== profile?.id ? (
                 <button
                   className="btn btn-gold btn-lg"
                   style={{ width: '100%', justifyContent: 'center' }}
