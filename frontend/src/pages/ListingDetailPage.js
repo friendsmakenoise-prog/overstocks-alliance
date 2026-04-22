@@ -187,12 +187,16 @@ export default function ListingDetailPage() {
                 </div>
               )}
 
-              {/* Anonymous seller handle */}
+              {/* Verified seller badge */}
               <div style={{
-                textAlign: 'center', marginTop: 16,
-                fontSize: 12, color: 'var(--muted)'
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 12px', background: 'var(--green-bg)',
+                borderRadius: 'var(--radius)', fontSize: 13,
+                color: 'var(--green)', marginBottom: 16
               }}>
-                Listed by <strong>{listing.anonymous_handle || 'Anonymous seller'}</strong>
+                <span>✓</span>
+                <span style={{ fontWeight: 500 }}>Verified seller</span>
+                <span style={{ color: 'var(--muted)', fontSize: 12 }}>— identity protected by platform</span>
               </div>
 
               {/* Report link */}
