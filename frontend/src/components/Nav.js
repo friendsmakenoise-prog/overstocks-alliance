@@ -1,17 +1,44 @@
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
+import { api } from '../lib/api'
 
 export default function Nav() {
   const { user, profile, signOut } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const [urgentCount, setUrgentCount] = useState(0)
+
+  const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
+
+  // Poll for urgent offers every 60 seconds
+  useEffect(() => {
+    if (!profile) return
+    checkUrgent()
+    const interval = setInterval(checkUrgent, 60000)
+    return () => clearInterval(interval)
+  }, [profile])
+
+  async function checkUrgent() {
+    try {
+      const data = await api.getOffers()
+      const urgent = (data.offers || []).filter(o => {
+        const isSeller = o.seller?.id === profile?.id
+        const isBuyer  = o.buyer?.id  === profile?.id
+        return (
+          (isSeller && o.status === 'pending') ||
+          (isBuyer  && o.status === 'countered') ||
+          (isBuyer  && o.status === 'accepted')
+        )
+      })
+      setUrgentCount(urgent.length)
+    } catch { /* silent fail */ }
+  }
 
   async function handleSignOut() {
     await signOut()
     navigate('/login')
   }
-
-  const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
 
   return (
     <nav className="nav">
@@ -21,11 +48,27 @@ export default function Nav() {
         </Link>
 
         <div className="nav-links">
-          {/* Always show sign out if there's any session at all */}
           {user && (
             <>
               {profile && (
                 <>
+                  {/* Dashboard with notification badge */}
+                  <Link to="/" className={isActive('/')} style={{ position: 'relative' }}>
+                    Dashboard
+                    {urgentCount > 0 && (
+                      <span style={{
+                        position: 'absolute', top: 2, right: -4,
+                        background: 'var(--gold)', color: 'var(--navy)',
+                        fontSize: 10, fontWeight: 700,
+                        width: 16, height: 16, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        lineHeight: 1
+                      }}>
+                        {urgentCount}
+                      </span>
+                    )}
+                  </Link>
+
                   <Link to="/listings" className={isActive('/listings')}>Browse</Link>
 
                   {(profile.role === 'supplier' || profile.role === 'retailer') && (
@@ -36,8 +79,6 @@ export default function Nav() {
                     <Link to="/my-listings" className={isActive('/my-listings')}>My listings</Link>
                   )}
 
-                  <Link to="/offers" className={isActive('/offers')}>Offers</Link>
-
                   {profile.role === 'admin' && (
                     <Link to="/admin" className={isActive('/admin')}>Admin</Link>
                   )}
@@ -46,7 +87,6 @@ export default function Nav() {
                 </>
               )}
 
-              {/* Sign out always visible when logged in, even if profile fails to load */}
               <button
                 onClick={handleSignOut}
                 className="nav-link"
