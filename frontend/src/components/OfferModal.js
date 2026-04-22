@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/AuthContext'
+import { getCounterpartyCodename } from '../lib/codenames'
 
 function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
@@ -8,6 +10,7 @@ function formatPrice(pence) {
 
 export default function OfferModal({ listing, onClose }) {
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const [mode, setMode] = useState('choose') // choose | direct | offer
   const [offerPrice, setOfferPrice] = useState('')
   const [offerQty, setOfferQty] = useState(listing.quantity)
@@ -157,7 +160,7 @@ export default function OfferModal({ listing, onClose }) {
             </div>
 
             <div className="alert alert-info" style={{ marginBottom: 16 }}>
-              🔒 Seller identity is protected. You're buying from <strong>{listing.anonymous_handle || 'an anonymous seller'}</strong>.
+              🔒 You are transacting with a <strong>Verified seller</strong>. Their identity is protected. You will appear to them as a one-time codename for this transaction only.
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
