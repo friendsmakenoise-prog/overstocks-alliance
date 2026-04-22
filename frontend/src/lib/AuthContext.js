@@ -37,11 +37,28 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true
 
+    // Hard timeout — if nothing resolves in 5 seconds, stop spinning
+    // This prevents infinite loading on slow or dropped connections
+    const hardTimeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Auth timeout — forcing loading to false')
+        setLoading(false)
+      }
+    }, 5000)
+
     async function init() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        // Race getSession against a 4 second timeout
+        const sessionResult = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Session fetch timeout')), 4000)
+          )
+        ])
 
         if (!mounted) return
+
+        const session = sessionResult?.data?.session
 
         if (session?.user) {
           setUser(session.user)
@@ -51,9 +68,17 @@ export function AuthProvider({ children }) {
           setProfile(null)
         }
       } catch (err) {
-        console.error('Auth init error:', err)
+        // Timeout or network error — clear session and let user log in
+        console.warn('Auth init issue:', err.message)
+        if (mounted) {
+          setUser(null)
+          setProfile(null)
+        }
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) {
+          clearTimeout(hardTimeout)
+          setLoading(false)
+        }
       }
     }
 
@@ -65,8 +90,6 @@ export function AuthProvider({ children }) {
 
         if (session?.user) {
           setUser(session.user)
-          // Only reload profile on meaningful auth events
-          // TOKEN_REFRESHED fires frequently — skip to avoid flicker
           if (event !== 'TOKEN_REFRESHED') {
             await loadProfile(session.user.id)
           }
@@ -77,14 +100,9 @@ export function AuthProvider({ children }) {
       }
     )
 
-    // Hard safety net — never spin forever
-    const timeout = setTimeout(() => {
-      if (mounted) setLoading(false)
-    }, 8000)
-
     return () => {
       mounted = false
-      clearTimeout(timeout)
+      clearTimeout(hardTimeout)
       subscription.unsubscribe()
     }
   }, [])
