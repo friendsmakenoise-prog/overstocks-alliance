@@ -176,6 +176,12 @@ export default function ListingsPage() {
                     }
                   </div>
 
+                  {listing.status === 'sold' && (
+                    <div style={{ marginTop: 8, padding: '4px 10px', background: 'var(--surface)', borderRadius: 100, fontSize: 11, color: 'var(--muted)', display: 'inline-block', border: '1px solid var(--border)' }}>
+                      ✓ Sold
+                    </div>
+                  )}
+
                   <div className="listing-card-handle">
                     ✓ Verified seller
                   </div>
