@@ -47,7 +47,7 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const {
       listingId, offerType, quantity,
-      offeredPricePounds, message
+      offeredPricePounds, message, buyerArrangesShipping
     } = req.body
 
     if (!listingId || !offerType || !quantity || !offeredPricePounds) {
@@ -101,10 +101,16 @@ router.post('/', requireAuth, async (req, res) => {
       }
     }
 
-    // Calculate fees on offered price
+    // Shipping cost — only charged if buyer accepts it
+    // If buyer arranges own shipping, cost is 0 in the transaction
+    const agreedShippingPence = buyerArrangesShipping
+      ? 0
+      : (listing.shipping_mode === 'included' ? (listing.shipping_cost_pence || 0) : 0)
+
+    // Fee on goods value ONLY — never on shipping
     const breakdown = await buildOrderBreakdown(
       offeredPricePence * qty,
-      listing.shipping_mode === 'included' ? (listing.shipping_cost_pence || 0) : 0
+      agreedShippingPence
     )
 
     const { data: offer, error } = await supabaseAdmin
@@ -118,8 +124,8 @@ router.post('/', requireAuth, async (req, res) => {
         quantity: qty,
         offered_price_pence: offeredPricePence,
         message: message ? xss(message.trim()).substring(0, 300) : null,
-        shipping_mode: listing.shipping_mode,
-        shipping_cost_pence: listing.shipping_mode === 'included' ? (listing.shipping_cost_pence || 0) : 0,
+        shipping_mode: buyerArrangesShipping ? 'buyer_arranges' : listing.shipping_mode,
+        shipping_cost_pence: agreedShippingPence,
         platform_fee_pence: breakdown.platformFeePence,
         platform_fee_pct: breakdown.platformFeePercentage,
         seller_payout_pence: breakdown.sellerPayoutPence,
