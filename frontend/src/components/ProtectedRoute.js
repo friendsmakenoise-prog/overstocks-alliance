@@ -1,18 +1,19 @@
+import { useEffect } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthContext'
 
-// ============================================================
-// PROTECTED ROUTE
-// Waits for BOTH auth session AND profile to be fully loaded
-// before rendering any page content. This prevents the
-// spinning wheel issue after Stripe redirects or hard refreshes.
-// All current and future pages get this fix automatically.
-// ============================================================
-
 export default function ProtectedRoute({ children, roles }) {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, loadProfile } = useAuth()
 
-  // Still loading auth session — show spinner
+  // If user exists but profile didn't load (e.g. slow connection),
+  // retry the profile fetch automatically
+  useEffect(() => {
+    if (!loading && user && !profile) {
+      loadProfile(user.id)
+    }
+  }, [loading, user, profile])
+
+  // Still loading — show spinner
   if (loading) {
     return (
       <div className="loading-page">
@@ -21,12 +22,11 @@ export default function ProtectedRoute({ children, roles }) {
     )
   }
 
-  // Auth loaded but no user — send to login
+  // No user — send to login
   if (!user) return <Navigate to="/login" replace />
 
-  // User exists but profile hasn't loaded yet — keep waiting
-  // This is the key fix: profile loads slightly after the session
-  // On Stripe redirects and hard refreshes this gap causes blank pages
+  // User exists but profile still loading — show spinner briefly
+  // The useEffect above will retry and resolve this quickly
   if (!profile) {
     return (
       <div className="loading-page">
@@ -35,7 +35,7 @@ export default function ProtectedRoute({ children, roles }) {
     )
   }
 
-  // Profile loaded — check status
+  // Check account status
   if (profile.status === 'pending') return <Navigate to="/pending" replace />
   if (profile.status === 'suspended' || profile.status === 'rejected') {
     return <Navigate to="/access-denied" replace />
@@ -46,6 +46,5 @@ export default function ProtectedRoute({ children, roles }) {
     return <Navigate to="/" replace />
   }
 
-  // All checks passed — render the page
   return children
 }
