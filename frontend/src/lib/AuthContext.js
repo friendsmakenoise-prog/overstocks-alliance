@@ -50,7 +50,10 @@ export function AuthProvider({ children }) {
         if (session?.user) {
           setUser(session.user)
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            await loadProfile(session.user.id)
+            // Defer profile load outside the onAuthStateChange callback
+            // The Supabase client can't handle DB queries fired inside
+            // this callback during initialisation — defer fixes the hang
+            setTimeout(() => loadProfile(session.user.id), 0)
           }
         } else {
           setUser(null)
