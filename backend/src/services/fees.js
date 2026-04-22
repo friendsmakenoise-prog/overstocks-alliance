@@ -56,7 +56,9 @@ async function calculatePlatformFee(goodsValuePence) {
 async function buildOrderBreakdown(goodsValuePence, shippingCostPence = 0) {
   const { feePence, feePercentage, tierName } = await calculatePlatformFee(goodsValuePence)
 
-  const sellerPayoutPence = goodsValuePence - feePence
+  // Seller receives: goods value - platform fee + shipping
+  // Platform fee is on goods only — shipping passes 100% to seller
+  const sellerPayoutPence = goodsValuePence - feePence + shippingCostPence
   const totalChargePence = goodsValuePence + shippingCostPence
 
   return {
