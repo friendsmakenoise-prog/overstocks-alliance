@@ -29,40 +29,55 @@ export function AuthProvider({ children }) {
         approvedBrands: permissions?.map(p => p.brands) || []
       })
     } catch (err) {
-      console.error('loadProfile error full details:', JSON.stringify(err))
+      console.error('loadProfile error:', err)
       setProfile(null)
-    } finally {
-      setLoading(false)
     }
   }
 
   useEffect(() => {
     let mounted = true
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return
-      setUser(session?.user || null)
-      if (session?.user) {
-        loadProfile(session.user.id)
-      } else {
-        setLoading(false)
+    async function init() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (session?.user) {
+          setUser(session.user)
+          await loadProfile(session.user.id)
+        } else {
+          setUser(null)
+          setProfile(null)
+        }
+      } catch (err) {
+        console.error('Auth init error:', err)
+      } finally {
+        if (mounted) setLoading(false)
       }
-    })
+    }
+
+    init()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return
-        setUser(session?.user || null)
+
         if (session?.user) {
-          await loadProfile(session.user.id)
+          setUser(session.user)
+          // Only reload profile on meaningful auth events
+          // TOKEN_REFRESHED fires frequently — skip to avoid flicker
+          if (event !== 'TOKEN_REFRESHED') {
+            await loadProfile(session.user.id)
+          }
         } else {
+          setUser(null)
           setProfile(null)
-          setLoading(false)
         }
       }
     )
 
-    // Safety net — never spin forever
+    // Hard safety net — never spin forever
     const timeout = setTimeout(() => {
       if (mounted) setLoading(false)
     }, 8000)
