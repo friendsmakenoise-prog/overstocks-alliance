@@ -22,7 +22,8 @@ export default function OrderPage() {
 
   const isSuccess = new URLSearchParams(location.search).get('success')
 
-  useEffect(() => { loadOrder() }, [id])
+  // Profile is guaranteed here — ProtectedRoute waits for it
+  useEffect(() => { loadOrder() }, [id, profile?.id])
   useEffect(() => {
     if (offer?.status === 'paid') loadMessages()
   }, [offer?.status])
