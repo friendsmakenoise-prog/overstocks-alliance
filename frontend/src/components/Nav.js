@@ -80,7 +80,10 @@ export default function Nav() {
                   )}
 
                   {profile.role === 'admin' && (
-                    <Link to="/admin" className={isActive('/admin')}>Admin</Link>
+                    <>
+                      <Link to="/admin" className={isActive('/admin')}>Admin</Link>
+                      <Link to="/admin/finance" className={isActive('/admin/finance')}>Finance</Link>
+                    </>
                   )}
 
                   <span className="nav-handle">{profile.anonymous_handle}</span>
