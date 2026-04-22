@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
-import { getCounterpartyCodename } from '../lib/codenames'
 
 function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
@@ -12,25 +11,32 @@ export default function OfferModal({ listing, onClose }) {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const [mode, setMode] = useState('choose') // choose | direct | offer
+  const [buyerArrangesShipping, setBuyerArrangesShipping] = useState(false)
   const [offerPrice, setOfferPrice] = useState('')
   const [offerQty, setOfferQty] = useState(listing.quantity)
+  const [offerShipping, setOfferShipping] = useState(
+    listing.shipping_mode === 'included' ? 'accept' : 'arrange'
+  )
   const [offerMessage, setOfferMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const listedPricePence = listing.price_pence
   const shippingPence = listing.shipping_cost_pence || 0
+  const hasShipping = listing.shipping_mode === 'included' && shippingPence > 0
   const isPartialQty = parseInt(offerQty) < listing.quantity
 
-  // Fee calculation preview (approximate — backend calculates exact)
-  function estimateFee(totalPence) {
-    if (totalPence >= 200000) return { pct: 1, fee: Math.round(totalPence * 0.01) }
-    if (totalPence >= 50000)  return { pct: 2, fee: Math.round(totalPence * 0.02) }
-    return { pct: 3, fee: Math.round(totalPence * 0.03) }
+  // Fee on goods value only — never on shipping
+  function estimateFee(goodsPence) {
+    if (goodsPence >= 500000) return { pct: 1, fee: Math.round(goodsPence * 0.01) }
+    if (goodsPence >= 100000) return { pct: 2, fee: Math.round(goodsPence * 0.02) }
+    return { pct: 3, fee: Math.round(goodsPence * 0.03) }
   }
 
-  const directTotal = listedPricePence * listing.quantity
-  const directFee = estimateFee(directTotal)
+  const directGoodsTotal = listedPricePence * listing.quantity
+  const directFee = estimateFee(directGoodsTotal)
+  const directShipping = !buyerArrangesShipping && hasShipping ? shippingPence : 0
+  const directBuyerTotal = directGoodsTotal + directShipping
 
   async function handleDirect() {
     setLoading(true)
@@ -40,9 +46,9 @@ export default function OfferModal({ listing, onClose }) {
         listingId: listing.id,
         offerType: 'direct',
         quantity: listing.quantity,
-        offeredPricePounds: (listedPricePence / 100).toFixed(2)
+        offeredPricePounds: (listedPricePence / 100).toFixed(2),
+        buyerArrangesShipping
       })
-      // Go straight to checkout
       const checkout = await api.createCheckout(data.offer.id)
       window.location.href = checkout.checkoutUrl
     } catch (err) {
@@ -61,9 +67,10 @@ export default function OfferModal({ listing, onClose }) {
         offerType: 'offer',
         quantity: parseInt(offerQty),
         offeredPricePounds: parseFloat(offerPrice).toFixed(2),
+        buyerArrangesShipping: offerShipping === 'arrange',
         message: offerMessage || undefined
       })
-      navigate('/offers')
+      navigate('/')
     } catch (err) {
       setError(err.message)
       setLoading(false)
@@ -77,13 +84,15 @@ export default function OfferModal({ listing, onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 300, padding: 20
     }}>
-      <div className="card" style={{ maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div className="card" style={{ maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 24, marginBottom: 4 }}>
-              {mode === 'choose' ? 'How would you like to proceed?' : mode === 'direct' ? 'Buy now' : 'Make an offer'}
+              {mode === 'choose' ? 'How would you like to proceed?'
+               : mode === 'direct' ? 'Confirm purchase'
+               : 'Make an offer'}
             </h2>
             <p style={{ fontSize: 13, color: 'var(--muted)' }}>{listing.title}</p>
           </div>
@@ -92,10 +101,9 @@ export default function OfferModal({ listing, onClose }) {
 
         {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
-        {/* Mode selection */}
+        {/* ── MODE SELECTION ── */}
         {mode === 'choose' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* Direct purchase option */}
             <button
               onClick={() => setMode('direct')}
               style={{
@@ -108,22 +116,21 @@ export default function OfferModal({ listing, onClose }) {
             >
               <div style={{ fontWeight: 500, marginBottom: 4 }}>Buy now — full quantity</div>
               <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 8 }}>
-                Purchase all {listing.quantity} units at the listed price. Proceeds straight to checkout.
+                Purchase all {listing.quantity} units at the listed price.
               </div>
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>
-                {formatPrice(listedPricePence * listing.quantity)}
-                {listing.shipping_mode === 'included' && shippingPence > 0 && (
-                  <span style={{ fontSize: 14, fontFamily: 'var(--font-body)', color: 'var(--muted)', marginLeft: 8 }}>
-                    + {formatPrice(shippingPence)} shipping
+                {formatPrice(directGoodsTotal)}
+                {hasShipping && (
+                  <span style={{ fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--muted)', marginLeft: 8 }}>
+                    + {formatPrice(shippingPence)} shipping (optional)
                   </span>
                 )}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                Platform fee: ~{directFee.pct}% ({formatPrice(directFee.fee)})
+                Platform fee ~{directFee.pct}% on goods value
               </div>
             </button>
 
-            {/* Make offer option */}
             <button
               onClick={() => setMode('offer')}
               style={{
@@ -136,43 +143,106 @@ export default function OfferModal({ listing, onClose }) {
             >
               <div style={{ fontWeight: 500, marginBottom: 4 }}>Make an offer</div>
               <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-                Negotiate on price, or request a partial quantity. Seller can accept, decline, or counter.
+                Negotiate on price or request a partial quantity.
               </div>
             </button>
           </div>
         )}
 
-        {/* Direct purchase confirmation */}
+        {/* ── DIRECT PURCHASE ── */}
         {mode === 'direct' && (
           <div>
-            <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 20 }}>
+            {/* Shipping choice — only show if listing has shipping included */}
+            {hasShipping && (
+              <div className="form-group" style={{ marginBottom: 20 }}>
+                <label className="form-label">Delivery</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {[
+                    {
+                      value: false,
+                      label: 'Accept delivery',
+                      hint: `+${formatPrice(shippingPence)} added to total`,
+                      detail: 'Seller arranges delivery to you'
+                    },
+                    {
+                      value: true,
+                      label: 'I arrange collection',
+                      hint: 'No shipping cost added',
+                      detail: 'You collect or book your own courier'
+                    }
+                  ].map(opt => (
+                    <label key={String(opt.value)} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 10,
+                      padding: '12px 14px', border: '1.5px solid',
+                      borderColor: buyerArrangesShipping === opt.value ? 'var(--navy)' : 'var(--border)',
+                      borderRadius: 'var(--radius)', cursor: 'pointer',
+                      background: buyerArrangesShipping === opt.value ? 'var(--surface)' : 'var(--white)',
+                      transition: 'all 0.15s'
+                    }}>
+                      <input
+                        type="radio"
+                        name="directShipping"
+                        checked={buyerArrangesShipping === opt.value}
+                        onChange={() => setBuyerArrangesShipping(opt.value)}
+                        style={{ marginTop: 2, accentColor: 'var(--navy)' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: 13 }}>{opt.label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500 }}>{opt.hint}</div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{opt.detail}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Order summary */}
+            <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius)', padding: '14px 16px', marginBottom: 16 }}>
               {[
-                { label: `${listing.quantity} units × ${formatPrice(listedPricePence)}`, value: formatPrice(listedPricePence * listing.quantity) },
-                listing.shipping_mode === 'included' && shippingPence > 0 && { label: 'Shipping', value: formatPrice(shippingPence) },
-                { label: `Platform fee (~${directFee.pct}%)`, value: formatPrice(directFee.fee), muted: true },
-                { label: 'Total charged', value: formatPrice(listedPricePence * listing.quantity + shippingPence), bold: true }
-              ].filter(Boolean).map((row, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: i < 3 ? 6 : 0, paddingTop: row.bold ? 10 : 0, borderTop: row.bold ? '1px solid var(--border)' : 'none', marginTop: row.bold ? 10 : 0 }}>
-                  <span style={{ color: row.muted ? 'var(--muted)' : 'var(--slate)' }}>{row.label}</span>
-                  <span style={{ fontWeight: row.bold ? 600 : 400, fontFamily: row.bold ? 'var(--font-display)' : 'inherit', fontSize: row.bold ? 20 : 14 }}>{row.value}</span>
+                { label: `${listing.quantity} units × ${formatPrice(listedPricePence)}`, value: formatPrice(directGoodsTotal) },
+                !buyerArrangesShipping && hasShipping && { label: 'Delivery (seller arranges)', value: formatPrice(shippingPence) },
+                buyerArrangesShipping && hasShipping && { label: 'Delivery', value: 'Buyer arranges', muted: true },
+                { label: `Platform fee (~${directFee.pct}% on goods)`, value: `−${formatPrice(directFee.fee)}`, muted: true, note: 'deducted from seller' },
+                { label: 'You pay', value: formatPrice(directBuyerTotal), bold: true }
+              ].filter(Boolean).map((row, i, arr) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  fontSize: 14, marginBottom: i < arr.length - 1 ? 6 : 0,
+                  paddingTop: row.bold ? 10 : 0,
+                  borderTop: row.bold ? '1px solid var(--border-dark)' : 'none',
+                  marginTop: row.bold ? 10 : 0
+                }}>
+                  <div>
+                    <span style={{ color: row.muted ? 'var(--muted)' : 'var(--slate)' }}>{row.label}</span>
+                    {row.note && <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 6 }}>({row.note})</span>}
+                  </div>
+                  <span style={{
+                    fontWeight: row.bold ? 600 : 400,
+                    fontFamily: row.bold ? 'var(--font-display)' : 'inherit',
+                    fontSize: row.bold ? 22 : 14,
+                    color: row.muted ? 'var(--muted)' : 'var(--navy)'
+                  }}>
+                    {row.value}
+                  </span>
                 </div>
               ))}
             </div>
 
-            <div className="alert alert-info" style={{ marginBottom: 16 }}>
-              🔒 You are transacting with a <strong>Verified seller</strong>. Their identity is protected. You will appear to them as a one-time codename for this transaction only.
+            <div className="alert alert-info" style={{ marginBottom: 16, fontSize: 12 }}>
+              🔒 Transacting with a <strong>Verified seller</strong>. Identities protected — you'll be assigned a one-time codename.
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-outline" onClick={() => setMode('choose')} disabled={loading} style={{ flex: 1, justifyContent: 'center' }}>Back</button>
               <button className="btn btn-gold btn-lg" onClick={handleDirect} disabled={loading} style={{ flex: 2, justifyContent: 'center' }}>
-                {loading ? 'Redirecting to checkout…' : 'Proceed to payment →'}
+                {loading ? 'Redirecting…' : 'Proceed to payment →'}
               </button>
             </div>
           </div>
         )}
 
-        {/* Offer form */}
+        {/* ── OFFER FORM ── */}
         {mode === 'offer' && (
           <form onSubmit={handleOffer}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -200,14 +270,56 @@ export default function OfferModal({ listing, onClose }) {
               </div>
             </div>
 
+            {/* Shipping choice for offer */}
+            <div className="form-group">
+              <label className="form-label">Delivery</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  {
+                    value: 'accept',
+                    label: hasShipping ? 'Accept delivery' : 'Request delivery',
+                    hint: hasShipping ? `+${formatPrice(shippingPence)}` : 'Ask seller to arrange',
+                    detail: hasShipping ? 'Seller arranges delivery' : 'Seller may counter on this'
+                  },
+                  {
+                    value: 'arrange',
+                    label: 'I arrange collection',
+                    hint: 'No shipping cost',
+                    detail: 'You collect or book courier'
+                  }
+                ].map(opt => (
+                  <label key={opt.value} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '12px 14px', border: '1.5px solid',
+                    borderColor: offerShipping === opt.value ? 'var(--navy)' : 'var(--border)',
+                    borderRadius: 'var(--radius)', cursor: 'pointer',
+                    background: offerShipping === opt.value ? 'var(--surface)' : 'var(--white)',
+                    transition: 'all 0.15s'
+                  }}>
+                    <input
+                      type="radio" name="offerShipping" value={opt.value}
+                      checked={offerShipping === opt.value}
+                      onChange={() => setOfferShipping(opt.value)}
+                      style={{ marginTop: 2, accentColor: 'var(--navy)' }}
+                    />
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{opt.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--gold)', fontWeight: 500 }}>{opt.hint}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{opt.detail}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {isPartialQty && (
               <div className="alert alert-warning" style={{ marginBottom: 12 }}>
-                Partial quantity requests must go through the offer process — the seller must accept before you can pay.
+                Partial quantities must go through the offer process — seller must accept before payment.
               </div>
             )}
 
             <div className="form-group">
-              <label className="form-label">Message (optional — max 300 characters)</label>
+              <label className="form-label">Message (optional, max 300 chars)</label>
               <textarea
                 className="form-input" rows={2}
                 value={offerMessage}
@@ -216,13 +328,11 @@ export default function OfferModal({ listing, onClose }) {
                 placeholder="Brief note to the seller (no contact details)…"
                 style={{ resize: 'none' }}
               />
-              <span className="form-hint">
-                {offerMessage.length}/300 · Do not include your name, email, or company details
-              </span>
+              <span className="form-hint">{offerMessage.length}/300</span>
             </div>
 
             <div className="alert alert-info" style={{ marginBottom: 16, fontSize: 12 }}>
-              The seller can accept, decline, or make one counter-offer. If accepted, you'll be prompted to pay.
+              Seller can accept, decline, or counter once. If accepted you'll be prompted to pay.
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
