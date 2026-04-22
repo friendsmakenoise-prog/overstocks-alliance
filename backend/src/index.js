@@ -27,8 +27,15 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
-// Parse JSON bodies
-app.use(express.json({ limit: '10kb' })) // Limit body size to prevent abuse
+// Parse JSON bodies — but NOT for the Stripe webhook route
+// Stripe requires the raw unparsed body to verify the signature
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    next()
+  } else {
+    express.json({ limit: '10kb' })(req, res, next)
+  }
+})
 
 // Global rate limiting — 100 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
