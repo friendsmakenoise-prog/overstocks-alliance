@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
+import { getCounterpartyCodename, getMyCodename } from '../lib/codenames'
 
 function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
@@ -399,9 +400,13 @@ function OfferCard({ offer, profile, actionLoading, checkoutLoading, counterForm
               </div>
             )}
 
-            {/* Who you're dealing with */}
+            {/* Counterparty codename — unique per transaction */}
             <div style={{ marginTop: 6, fontSize: 11, color: 'var(--muted)' }}>
-              {isBuyer ? `Seller: ${offer.seller?.anonymous_handle}` : `Buyer: ${offer.buyer?.anonymous_handle}`}
+              {isBuyer
+                ? `Counterparty: ${getCounterpartyCodename(offer.id, offer.seller?.id || '')}`
+                : `Counterparty: ${getCounterpartyCodename(offer.id, offer.buyer?.id || '')}`
+              }
+              <span style={{ marginLeft: 6, color: 'var(--green)', fontSize: 10 }}>· one-time alias</span>
             </div>
           </div>
 
