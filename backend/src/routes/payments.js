@@ -15,67 +15,83 @@ const { requireAuth } = require('../middleware/auth')
 router.post('/checkout', requireAuth, async (req, res) => {
   try {
     const { offerId } = req.body
-
     if (!offerId) return res.status(400).json({ error: 'offerId required' })
 
-    // Fetch the offer
+    // Fetch offer without the problematic join first
     const { data: offer, error: offerError } = await supabaseAdmin
       .from('offers')
-      .select(`
-        *,
-        listing:listing_id ( id, title, image_urls ),
-        seller_stripe:seller_stripe_accounts!seller_id ( stripe_account_id, charges_enabled )
-      `)
+      .select('*')
       .eq('id', offerId)
       .eq('buyer_id', req.user.id)
       .eq('status', 'accepted')
       .single()
 
     if (offerError || !offer) {
+      console.error('Offer lookup failed:', offerError)
       return res.status(404).json({ error: 'Offer not found or not ready for payment' })
     }
 
+    // Fetch listing separately
+    const { data: listing } = await supabaseAdmin
+      .from('listings')
+      .select('id, title, image_urls')
+      .eq('id', offer.listing_id)
+      .single()
+
+    // Fetch seller Stripe account separately
+    const { data: sellerStripe } = await supabaseAdmin
+      .from('seller_stripe_accounts')
+      .select('stripe_account_id, charges_enabled')
+      .eq('user_id', offer.seller_id)
+      .single()
+
     // Check seller has connected Stripe
-    if (!offer.seller_stripe?.charges_enabled) {
+    if (!sellerStripe?.charges_enabled) {
       return res.status(400).json({
-        error: 'Seller has not connected their payment account yet. Please check back shortly.',
+        error: 'Seller has not connected their payment account yet.',
         code: 'SELLER_NOT_CONNECTED'
       })
     }
 
-    const totalPence = (offer.agreed_price_pence * offer.quantity) + offer.shipping_cost_pence
-    const platformFeePence = offer.platform_fee_pence
+    // Use agreed_price if set, fall back to offered_price (for direct purchases)
+    const unitPricePence = offer.agreed_price_pence || offer.offered_price_pence
+    const platformFeePence = offer.platform_fee_pence || 0
+    const shippingPence = offer.shipping_cost_pence || 0
 
-    // Build line items for checkout
+    if (!unitPricePence || unitPricePence <= 0) {
+      return res.status(400).json({ error: 'Invalid offer price' })
+    }
+
+    // Build line items
     const lineItems = [
       {
         price_data: {
           currency: 'gbp',
           product_data: {
-            name: offer.listing.title,
+            name: listing?.title || 'Stock listing',
             description: `${offer.quantity} unit${offer.quantity !== 1 ? 's' : ''} · ${offer.shipping_mode === 'included' ? 'Shipping included' : 'Buyer arranges shipping'}`,
-            images: offer.listing.image_urls?.length > 0 ? [offer.listing.image_urls[0]] : []
+            images: listing?.image_urls?.length > 0 ? [listing.image_urls[0]] : []
           },
-          unit_amount: offer.agreed_price_pence
+          unit_amount: unitPricePence
         },
         quantity: offer.quantity
       }
     ]
 
     // Add shipping as separate line item if included
-    if (offer.shipping_mode === 'included' && offer.shipping_cost_pence > 0) {
+    if (offer.shipping_mode === 'included' && shippingPence > 0) {
       lineItems.push({
         price_data: {
           currency: 'gbp',
           product_data: { name: 'Shipping' },
-          unit_amount: offer.shipping_cost_pence
+          unit_amount: shippingPence
         },
         quantity: 1
       })
     }
 
-    // Create Stripe checkout session with Connect
-    const session = await stripe.checkout.sessions.create({
+    // Create Stripe checkout session
+    const sessionConfig = {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
@@ -85,17 +101,28 @@ router.post('/checkout', requireAuth, async (req, res) => {
         offer_id: offerId,
         buyer_id: req.user.id,
         seller_id: offer.seller_id
-      },
-      payment_intent_data: {
+      }
+    }
+
+    // Only add Connect fee splitting if platform fee > 0
+    if (platformFeePence > 0) {
+      sessionConfig.payment_intent_data = {
         application_fee_amount: platformFeePence,
         transfer_data: {
-          destination: offer.seller_stripe.stripe_account_id
+          destination: sellerStripe.stripe_account_id
         },
-        metadata: {
-          offer_id: offerId
-        }
+        metadata: { offer_id: offerId }
       }
-    })
+    } else {
+      sessionConfig.payment_intent_data = {
+        transfer_data: {
+          destination: sellerStripe.stripe_account_id
+        },
+        metadata: { offer_id: offerId }
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig)
 
     // Save session ID to offer
     await supabaseAdmin
@@ -105,8 +132,8 @@ router.post('/checkout', requireAuth, async (req, res) => {
 
     res.json({ checkoutUrl: session.url, sessionId: session.id })
   } catch (err) {
-    console.error('Checkout error:', err)
-    res.status(500).json({ error: 'Failed to create checkout session' })
+    console.error('Checkout error:', err.message, err.raw || '')
+    res.status(500).json({ error: 'Failed to create checkout session', detail: err.message })
   }
 })
 
@@ -116,7 +143,6 @@ router.post('/checkout', requireAuth, async (req, res) => {
  */
 router.post('/connect/onboard', requireAuth, async (req, res) => {
   try {
-    // Check if seller already has an account
     const { data: existing } = await supabaseAdmin
       .from('seller_stripe_accounts')
       .select('stripe_account_id, onboarding_complete')
@@ -128,27 +154,26 @@ router.post('/connect/onboard', requireAuth, async (req, res) => {
     if (existing) {
       accountId = existing.stripe_account_id
     } else {
-      // Create a new Express account for this seller
       const account = await stripe.accounts.create({
         type: 'express',
         country: 'GB',
+        email: req.user.email,
+        business_type: 'company',
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true }
+        },
+        settings: {
+          payouts: { schedule: { interval: 'manual' } }
         }
       })
       accountId = account.id
 
-      // Save to database
       await supabaseAdmin
         .from('seller_stripe_accounts')
-        .insert({
-          user_id: req.user.id,
-          stripe_account_id: accountId
-        })
+        .insert({ user_id: req.user.id, stripe_account_id: accountId })
     }
 
-    // Create onboarding link
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${process.env.FRONTEND_URL}/settings/payments?refresh=true`,
@@ -158,14 +183,13 @@ router.post('/connect/onboard', requireAuth, async (req, res) => {
 
     res.json({ onboardingUrl: accountLink.url })
   } catch (err) {
-    console.error('Connect onboard error:', err)
-    res.status(500).json({ error: 'Failed to start payment setup' })
+    console.error('Connect onboard error:', err.message)
+    res.status(500).json({ error: 'Failed to start payment setup', detail: err.message })
   }
 })
 
 /**
  * GET /api/payments/connect/status
- * Check seller's Stripe Connect status
  */
 router.get('/connect/status', requireAuth, async (req, res) => {
   try {
@@ -175,31 +199,21 @@ router.get('/connect/status', requireAuth, async (req, res) => {
       .eq('user_id', req.user.id)
       .single()
 
-    if (!account) {
-      return res.json({ connected: false })
-    }
+    if (!account) return res.json({ connected: false })
 
-    // Refresh status from Stripe
     const stripeAccount = await stripe.accounts.retrieve(account.stripe_account_id)
-
     const charges_enabled = stripeAccount.charges_enabled
     const payouts_enabled = stripeAccount.payouts_enabled
     const onboarding_complete = charges_enabled && payouts_enabled
 
-    // Update database with latest status
     await supabaseAdmin
       .from('seller_stripe_accounts')
       .update({ charges_enabled, payouts_enabled, onboarding_complete })
       .eq('user_id', req.user.id)
 
-    res.json({
-      connected: true,
-      charges_enabled,
-      payouts_enabled,
-      onboarding_complete
-    })
+    res.json({ connected: true, charges_enabled, payouts_enabled, onboarding_complete })
   } catch (err) {
-    console.error('Connect status error:', err)
+    console.error('Connect status error:', err.message)
     res.status(500).json({ error: 'Failed to check payment status' })
   }
 })
@@ -207,7 +221,6 @@ router.get('/connect/status', requireAuth, async (req, res) => {
 /**
  * POST /api/payments/webhook
  * Handle Stripe webhook events
- * IMPORTANT: This route uses raw body parsing (set up in index.js)
  */
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature']
@@ -215,9 +228,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   let event
   try {
     event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
+      req.body, sig, process.env.STRIPE_WEBHOOK_SECRET
     )
   } catch (err) {
     console.error('Webhook signature error:', err.message)
@@ -229,7 +240,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       case 'checkout.session.completed': {
         const session = event.data.object
         const offerId = session.metadata?.offer_id
-
         if (!offerId) break
 
         // Mark offer as paid
@@ -245,7 +255,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
           .single()
 
         if (offer) {
-          // Reduce listing quantity
+          // Reduce listing quantity and update status
           const { data: listing } = await supabaseAdmin
             .from('listings')
             .select('quantity')
@@ -262,6 +272,15 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
               })
               .eq('id', offer.listing_id)
           }
+
+          // Clear any other pending/accepted offers on this listing
+          // now that a sale has completed
+          await supabaseAdmin
+            .from('offers')
+            .update({ status: 'cancelled' })
+            .eq('listing_id', offer.listing_id)
+            .in('status', ['pending', 'countered', 'accepted'])
+            .neq('id', offerId)
         }
         break
       }
