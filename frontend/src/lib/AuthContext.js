@@ -28,29 +28,72 @@ export function AuthProvider({ children }) {
         ...data,
         approvedBrands: permissions?.map(p => p.brands) || []
       })
-      return true
     } catch (err) {
       console.error('loadProfile error:', err)
       setProfile(null)
-      return false
     }
   }
 
   useEffect(() => {
     let mounted = true
 
-    // onAuthStateChange fires reliably on every page load, including
-    // after Stripe redirects and browser back/forward navigation.
-    // INITIAL_SESSION is the event we get when Supabase restores a
-    // saved session — we wait for this before setting loading=false.
+    async function init() {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (error) {
+          // Clear any stale/corrupt session data
+          await supabase.auth.signOut()
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+          return
+        }
+
+        if (session?.user) {
+          // Check if token is expired
+          const now = Math.floor(Date.now() / 1000)
+          if (session.expires_at && session.expires_at < now) {
+            // Token expired — try to refresh it
+            const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+            if (refreshError || !refreshed.session) {
+              // Refresh failed — clear session
+              await supabase.auth.signOut()
+              setUser(null)
+              setProfile(null)
+              setLoading(false)
+              return
+            }
+            setUser(refreshed.session.user)
+            await loadProfile(refreshed.session.user.id)
+          } else {
+            setUser(session.user)
+            await loadProfile(session.user.id)
+          }
+        } else {
+          setUser(null)
+          setProfile(null)
+        }
+      } catch (err) {
+        console.error('Auth init error:', err)
+        if (mounted) {
+          setUser(null)
+          setProfile(null)
+        }
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    init()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return
-
         if (session?.user) {
           setUser(session.user)
-          // Load profile on initial session restore and sign in
-          // Skip on token refresh to avoid unnecessary re-renders
           if (event !== 'TOKEN_REFRESHED') {
             await loadProfile(session.user.id)
           }
@@ -58,22 +101,11 @@ export function AuthProvider({ children }) {
           setUser(null)
           setProfile(null)
         }
-
-        // Mark loading complete after first auth event fires
-        // This covers both "has session" and "no session" cases
-        if (mounted) setLoading(false)
       }
     )
 
-    // Backstop — if onAuthStateChange never fires (e.g. network issue)
-    // stop the spinner after 10 seconds so user isn't stuck forever
-    const backstop = setTimeout(() => {
-      if (mounted) setLoading(false)
-    }, 10000)
-
     return () => {
       mounted = false
-      clearTimeout(backstop)
       subscription.unsubscribe()
     }
   }, [])
@@ -81,8 +113,6 @@ export function AuthProvider({ children }) {
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
-    // onAuthStateChange will fire SIGNED_IN and load the profile
-    // but we also load it here so the UI updates immediately
     await loadProfile(data.user.id)
     return data
   }
