@@ -3,6 +3,7 @@ const router = express.Router()
 const { supabaseAdmin } = require('../../config/supabase')
 const { requireAuth, requireRole } = require('../middleware/auth')
 const { grantBrandPermission, revokeBrandPermission } = require('../services/brandPermissions')
+const email = require('../services/email')
 
 // All admin routes require authentication AND admin role
 router.use(requireAuth, requireRole('admin'))
@@ -38,6 +39,29 @@ router.get('/users', async (req, res) => {
   } catch (err) {
     console.error('Admin get users error:', err)
     res.status(500).json({ error: 'Failed to fetch users' })
+  }
+})
+
+/**
+ * GET /api/admin/users/:id
+ * Single user — used by AdminUserPage
+ */
+router.get('/users/:id', async (req, res) => {
+  try {
+    const { data: user, error } = await supabaseAdmin
+      .from('user_profiles')
+      .select(`
+        id, email, role, status, company_name,
+        contact_name, phone, anonymous_handle,
+        created_at, approved_at, rejection_reason
+      `)
+      .eq('id', req.params.id)
+      .single()
+
+    if (error || !user) return res.status(404).json({ error: 'User not found' })
+    res.json({ user })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch user' })
   }
 })
 
@@ -83,6 +107,20 @@ router.post('/users/:id/approve', async (req, res) => {
       target_type: 'user',
       target_id: id
     })
+
+    // ── Email: notify user their account is approved
+    const { data: profile } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email, company_name, anonymous_handle')
+      .eq('id', id)
+      .single()
+    if (profile?.email) {
+      email.sendAccountApproved({
+        email: profile.email,
+        companyName: profile.company_name,
+        anonymousHandle: profile.anonymous_handle
+      }).catch(e => console.error('Email error:', e))
+    }
 
     res.json({ message: 'User approved', user })
   } catch (err) {
@@ -293,20 +331,21 @@ router.post('/users/:id/permissions/revoke', async (req, res) => {
  */
 router.get('/listings', async (req, res) => {
   try {
-    const { status } = req.query
+    const { status, seller_id } = req.query
 
     let query = supabaseAdmin
       .from('listings')
       .select(`
         id, title, price_pence, quantity, status,
         shipping_mode, shipping_cost_pence,
-        reported_count, created_at,
+        image_urls, reported_count, created_at,
         brands(id, name),
         seller:seller_id ( id, company_name, anonymous_handle, email )
       `)
       .order('created_at', { ascending: false })
 
     if (status) query = query.eq('status', status)
+    if (seller_id) query = query.eq('seller_id', seller_id)
 
     const { data: listings, error } = await query
     if (error) throw error
@@ -327,7 +366,7 @@ router.post('/listings/:id/approve', async (req, res) => {
       .update({ status: 'active' })
       .eq('id', req.params.id)
       .eq('status', 'pending_review')
-      .select('id, title, status')
+      .select('id, title, seller_id, status')
       .single()
 
     if (error || !data) return res.status(404).json({ error: 'Listing not found' })
@@ -338,6 +377,19 @@ router.post('/listings/:id/approve', async (req, res) => {
       target_type: 'listing',
       target_id: req.params.id
     })
+
+    // ── Email: notify seller listing is live
+    const { data: seller } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email')
+      .eq('id', data.seller_id)
+      .single()
+    if (seller?.email) {
+      email.sendListingApproved({
+        email: seller.email,
+        listingTitle: data.title
+      }).catch(e => console.error('Email error:', e))
+    }
 
     res.json({ message: 'Listing approved and now live', listing: data })
   } catch (err) {
@@ -356,7 +408,7 @@ router.post('/listings/:id/remove', async (req, res) => {
       .from('listings')
       .update({ status: 'removed' })
       .eq('id', req.params.id)
-      .select('id, title')
+      .select('id, title, seller_id')
       .single()
 
     if (error || !data) return res.status(404).json({ error: 'Listing not found' })
@@ -368,6 +420,20 @@ router.post('/listings/:id/remove', async (req, res) => {
       target_id: req.params.id,
       metadata: { reason }
     })
+
+    // ── Email: notify seller listing was removed
+    const { data: seller } = await supabaseAdmin
+      .from('user_profiles')
+      .select('email')
+      .eq('id', data.seller_id)
+      .single()
+    if (seller?.email) {
+      email.sendListingRemoved({
+        email: seller.email,
+        listingTitle: data.title,
+        reason: reason || null
+      }).catch(e => console.error('Email error:', e))
+    }
 
     res.json({ message: 'Listing removed', listing: data })
   } catch (err) {
@@ -397,7 +463,5 @@ router.get('/reports', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch reports' })
   }
 })
-
-module.exports = router
 
 module.exports = router
