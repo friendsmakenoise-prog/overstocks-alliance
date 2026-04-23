@@ -85,7 +85,7 @@ router.post('/signup', async (req, res) => {
     // --- Save brand applications ---
     const brandApplications = []
 
-    // Active brands selected
+    // Active brands selected directly from grid
     if (selectedBrands && Array.isArray(selectedBrands) && selectedBrands.length > 0) {
       for (const brandId of selectedBrands) {
         brandApplications.push({
@@ -96,17 +96,42 @@ router.post('/signup', async (req, res) => {
       }
     }
 
-    // "Other" brand freetext
+    // "Other" brand freetext — try to match against existing brands first
     if (otherBrand && otherBrand.trim()) {
-      // Split by comma in case they entered multiple
       const otherBrands = otherBrand.split(',').map(b => b.trim()).filter(Boolean)
+
+      // Fetch all active brands for matching
+      const { data: existingBrands } = await supabaseAdmin
+        .from('brands')
+        .select('id, name')
+        .eq('status', 'active')
+
       for (const brandName of otherBrands) {
-        brandApplications.push({
-          user_id: authData.user.id,
-          brand_id: null,
-          brand_name_text: brandName.substring(0, 200),
-          is_other: true
-        })
+        // Case-insensitive exact match against existing brands
+        const matched = (existingBrands || []).find(
+          b => b.name.toLowerCase() === brandName.toLowerCase()
+        )
+
+        if (matched) {
+          // Found a match — link to real brand instead of saving as Other
+          // Only add if not already in selectedBrands
+          const alreadySelected = selectedBrands && selectedBrands.includes(matched.id)
+          if (!alreadySelected) {
+            brandApplications.push({
+              user_id: authData.user.id,
+              brand_id: matched.id,
+              is_other: false
+            })
+          }
+        } else {
+          // No match — save as Other for admin to review
+          brandApplications.push({
+            user_id: authData.user.id,
+            brand_id: null,
+            brand_name_text: brandName.substring(0, 200),
+            is_other: true
+          })
+        }
       }
     }
 
