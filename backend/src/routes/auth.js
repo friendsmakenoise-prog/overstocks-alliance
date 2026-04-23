@@ -18,7 +18,7 @@ const validator = require('validator')
  */
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, role, companyName, contactName, phone } = req.body
+    const { email, password, role, companyName, contactName, phone, selectedBrands, otherBrand } = req.body
 
     // --- Input validation ---
     if (!email || !password || !role || !companyName || !contactName) {
@@ -50,7 +50,7 @@ router.post('/signup', async (req, res) => {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email.toLowerCase().trim(),
       password,
-      email_confirm: false // They must confirm email first
+      email_confirm: false
     })
 
     if (authError) {
@@ -78,9 +78,50 @@ router.post('/signup', async (req, res) => {
       })
 
     if (profileError) {
-      // Clean up auth user if profile creation fails
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       throw profileError
+    }
+
+    // --- Save brand applications ---
+    const brandApplications = []
+
+    // Active brands selected
+    if (selectedBrands && Array.isArray(selectedBrands) && selectedBrands.length > 0) {
+      for (const brandId of selectedBrands) {
+        brandApplications.push({
+          user_id: authData.user.id,
+          brand_id: brandId,
+          is_other: false
+        })
+      }
+    }
+
+    // "Other" brand freetext
+    if (otherBrand && otherBrand.trim()) {
+      // Split by comma in case they entered multiple
+      const otherBrands = otherBrand.split(',').map(b => b.trim()).filter(Boolean)
+      for (const brandName of otherBrands) {
+        brandApplications.push({
+          user_id: authData.user.id,
+          brand_id: null,
+          brand_name_text: brandName.substring(0, 200),
+          is_other: true
+        })
+      }
+    }
+
+    if (brandApplications.length > 0) {
+      await supabaseAdmin.from('brand_applications').insert(brandApplications)
+    }
+
+    // --- Save supplier brand distributions if supplier ---
+    if (role === 'supplier' && selectedBrands && selectedBrands.length > 0) {
+      const distributions = selectedBrands.map(brandId => ({
+        supplier_id: authData.user.id,
+        brand_id: brandId,
+        is_other: false
+      }))
+      await supabaseAdmin.from('supplier_brand_distributions').insert(distributions)
     }
 
     res.status(201).json({
