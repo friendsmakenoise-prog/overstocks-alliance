@@ -18,6 +18,7 @@ import OrderPage from './pages/OrderPage'
 import PaymentSettingsPage from './pages/PaymentSettingsPage'
 import AdminPage from './pages/AdminPage'
 import AdminFinancePage from './pages/AdminFinancePage'
+import AdminBrandApplicationsPage from './pages/AdminBrandApplicationsPage'
 import './styles/global.css'
 
 function Layout({ children }) {
@@ -109,6 +110,12 @@ function AppRoutes() {
       <Route path="/admin/finance" element={
         <ProtectedRoute roles={['admin']}>
           <Layout><AdminFinancePage /></Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/admin/brand-applications" element={
+        <ProtectedRoute roles={['admin']}>
+          <Layout><AdminBrandApplicationsPage /></Layout>
         </ProtectedRoute>
       } />
 
