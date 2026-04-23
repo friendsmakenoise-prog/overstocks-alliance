@@ -110,7 +110,8 @@ export default function SignupPage() {
             Request access
           </h1>
           <p style={{ color: 'var(--slate)' }}>
-            Applications are reviewed by our team before access is granted.
+            Private trading for authorised brand partners.
+          Applications are reviewed by our team before access is granted.
           </p>
         </div>
 
