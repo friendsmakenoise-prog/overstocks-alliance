@@ -8,11 +8,15 @@ export default function Nav() {
   const location = useLocation()
   const navigate = useNavigate()
   const [urgentCount, setUrgentCount] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
   const isAdmin = profile?.role === 'admin'
 
-  // Poll for urgent items — different logic for admin vs regular users
+  // Close menu on route change
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+
+  // Poll for urgent items
   useEffect(() => {
     if (!profile) return
     checkUrgent()
@@ -23,7 +27,6 @@ export default function Nav() {
   async function checkUrgent() {
     try {
       if (isAdmin) {
-        // Admin: count pending users + pending listings + open reports
         const [users, listings, reports] = await Promise.all([
           api.admin.getUsers({ status: 'pending' }),
           api.admin.getListings({ status: 'pending_review' }),
@@ -35,7 +38,6 @@ export default function Nav() {
           (reports.reports?.length || 0)
         )
       } else {
-        // Regular user: count offers needing action
         const data = await api.getOffers()
         const urgent = (data.offers || []).filter(o => {
           const isSeller = o.seller?.id === profile?.id
@@ -56,72 +58,108 @@ export default function Nav() {
     navigate('/login')
   }
 
+  // Build nav links based on role
+  const navLinks = !user || !profile ? [] : isAdmin ? [
+    { to: '/', label: 'Dashboard', badge: urgentCount },
+    { to: '/admin', label: 'Users & listings' },
+    { to: '/admin/brand-applications', label: 'Brand applications' },
+    { to: '/admin/finance', label: 'Finance' },
+  ] : [
+    { to: '/', label: 'Dashboard', badge: urgentCount },
+    { to: '/listings', label: 'Browse' },
+    ...(profile.role === 'supplier' || profile.role === 'retailer' ? [
+      { to: '/listings/new', label: '+ New listing' },
+      { to: '/my-listings', label: 'My listings' },
+    ] : []),
+  ]
+
   return (
-    <nav className="nav">
-      <div className="nav-inner">
-        <Link to="/" className="nav-logo">
-          Overstocks <span>Alliance</span>
-        </Link>
+    <>
+      <nav className="nav">
+        <div className="nav-inner">
+          <Link to="/" className="nav-logo">
+            Overstocks <span>Alliance</span>
+          </Link>
 
-        <div className="nav-links">
-          {user && (
-            <>
-              {profile && (
-                <>
-                  {/* Dashboard link with notification badge */}
-                  <Link to="/" className={isActive('/')} style={{ position: 'relative' }}>
-                    {isAdmin ? 'Dashboard' : 'Dashboard'}
-                    {urgentCount > 0 && (
-                      <span style={{
-                        position: 'absolute', top: 2, right: -4,
-                        background: 'var(--gold)', color: 'var(--navy)',
-                        fontSize: 10, fontWeight: 700,
-                        width: 16, height: 16, borderRadius: '50%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        lineHeight: 1
-                      }}>
-                        {urgentCount > 9 ? '9+' : urgentCount}
-                      </span>
-                    )}
-                  </Link>
-
-                  {/* Admin nav — management only */}
-                  {isAdmin && (
-                    <>
-                      <Link to="/admin" className={isActive('/admin')}>Users & listings</Link>
-                      <Link to="/admin/brand-applications" className={isActive('/admin/brand-applications')}>Brand applications</Link>
-                      <Link to="/admin/finance" className={isActive('/admin/finance')}>Finance</Link>
-                    </>
-                  )}
-
-                  {/* Regular user nav */}
-                  {!isAdmin && (
-                    <>
-                      <Link to="/listings" className={isActive('/listings')}>Browse</Link>
-                      {(profile.role === 'supplier' || profile.role === 'retailer') && (
-                        <Link to="/listings/new" className={isActive('/listings/new')}>+ New listing</Link>
-                      )}
-                      {(profile.role === 'supplier' || profile.role === 'retailer') && (
-                        <Link to="/my-listings" className={isActive('/my-listings')}>My listings</Link>
-                      )}
-                    </>
-                  )}
-
-                  <span className="nav-handle">{profile.anonymous_handle}</span>
-                </>
-              )}
-
-              <button
-                onClick={handleSignOut}
-                className="nav-link"
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-              >
+          {/* Desktop nav links */}
+          <div className="nav-links">
+            {navLinks.map(link => (
+              <Link key={link.to} to={link.to} className={isActive(link.to)} style={{ position: 'relative' }}>
+                {link.label}
+                {link.badge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: -4,
+                    background: 'var(--gold)', color: 'var(--navy)',
+                    fontSize: 10, fontWeight: 700,
+                    width: 16, height: 16, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {link.badge > 9 ? '9+' : link.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+            {user && profile && (
+              <>
+                <span className="nav-handle">{profile.anonymous_handle}</span>
+                <button onClick={handleSignOut} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Sign out
+                </button>
+              </>
+            )}
+            {user && !profile && (
+              <button onClick={handleSignOut} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 Sign out
               </button>
-            </>
+            )}
+          </div>
+
+          {/* Mobile hamburger */}
+          {user && (
+            <button
+              className={`nav-hamburger ${menuOpen ? 'open' : ''}`}
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="Toggle menu"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
           )}
         </div>
-      </div>
-    </nav>
+
+        {/* Mobile dropdown menu */}
+        {user && (
+          <div className={`nav-mobile-menu ${menuOpen ? 'open' : ''}`}>
+            {navLinks.map(link => (
+              <Link key={link.to} to={link.to} className="nav-link" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {link.label}
+                {link.badge > 0 && (
+                  <span style={{
+                    background: 'var(--gold)', color: 'var(--navy)',
+                    fontSize: 11, fontWeight: 700,
+                    padding: '2px 7px', borderRadius: 100
+                  }}>
+                    {link.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+            {profile && (
+              <div className="nav-mobile-handle">
+                Signed in as {profile.anonymous_handle}
+              </div>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', marginTop: 4 }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
+      </nav>
+    </>
   )
 }
