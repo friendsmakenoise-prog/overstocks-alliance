@@ -14,8 +14,26 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filters, setFilters] = useState({ brand_id: '', min_price: '', max_price: '' })
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState('newest')
 
   const approvedBrands = profile?.approvedBrands || []
+
+  // Client-side search + sort on top of server-side brand/price filter
+  const displayListings = listings
+    .filter(l => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return l.title?.toLowerCase().includes(q) || l.brands?.name?.toLowerCase().includes(q)
+    })
+    .sort((a, b) => {
+      if (sort === 'newest')    return new Date(b.created_at) - new Date(a.created_at)
+      if (sort === 'oldest')    return new Date(a.created_at) - new Date(b.created_at)
+      if (sort === 'price_asc') return a.price_pence - b.price_pence
+      if (sort === 'price_desc')return b.price_pence - a.price_pence
+      if (sort === 'az')        return (a.title || '').localeCompare(b.title || '')
+      return 0
+    })
 
   useEffect(() => {
     loadListings()
@@ -59,50 +77,71 @@ export default function ListingsPage() {
           )}
         </div>
 
-        {/* Filters */}
-        {approvedBrands.length > 0 && (
-          <div className="card" style={{ marginBottom: 24, padding: '16px 20px' }}>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Brand</label>
-                <select
-                  className="form-input"
-                  value={filters.brand_id}
-                  onChange={e => setFilters(f => ({ ...f, brand_id: e.target.value }))}
-                >
-                  <option value="">All my brands</option>
-                  {approvedBrands.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ flex: '0 1 140px' }}>
-                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Min price (£)</label>
-                <input
-                  className="form-input" type="number" min="0" step="1"
-                  placeholder="0"
-                  value={filters.min_price}
-                  onChange={e => setFilters(f => ({ ...f, min_price: e.target.value }))}
-                />
-              </div>
-              <div style={{ flex: '0 1 140px' }}>
-                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Max price (£)</label>
-                <input
-                  className="form-input" type="number" min="0" step="1"
-                  placeholder="Any"
-                  value={filters.max_price}
-                  onChange={e => setFilters(f => ({ ...f, max_price: e.target.value }))}
-                />
-              </div>
+        {/* Search & Filters */}
+        <div className="card" style={{ marginBottom: 20, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              className="form-input"
+              style={{ flex: '1 1 180px', minWidth: 140 }}
+              type="search"
+              placeholder="Search listings…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {approvedBrands.length > 1 && (
+              <select
+                className="form-input"
+                style={{ flex: '0 1 160px' }}
+                value={filters.brand_id}
+                onChange={e => setFilters(f => ({ ...f, brand_id: e.target.value }))}
+              >
+                <option value="">All my brands</option>
+                {approvedBrands.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            )}
+            <input
+              className="form-input" type="number" min="0" step="1"
+              style={{ flex: '0 1 110px', minWidth: 90 }}
+              placeholder="Min £"
+              value={filters.min_price}
+              onChange={e => setFilters(f => ({ ...f, min_price: e.target.value }))}
+            />
+            <input
+              className="form-input" type="number" min="0" step="1"
+              style={{ flex: '0 1 110px', minWidth: 90 }}
+              placeholder="Max £"
+              value={filters.max_price}
+              onChange={e => setFilters(f => ({ ...f, max_price: e.target.value }))}
+            />
+            <select
+              className="form-input"
+              style={{ flex: '0 1 150px' }}
+              value={sort}
+              onChange={e => setSort(e.target.value)}
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="price_asc">Price: low → high</option>
+              <option value="price_desc">Price: high → low</option>
+              <option value="az">Title A → Z</option>
+            </select>
+            {(search || filters.brand_id || filters.min_price || filters.max_price) && (
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => setFilters({ brand_id: '', min_price: '', max_price: '' })}
+                onClick={() => { setSearch(''); setFilters({ brand_id: '', min_price: '', max_price: '' }) }}
               >
-                Clear
+                Clear all
               </button>
-            </div>
+            )}
           </div>
-        )}
+          {displayListings.length !== listings.length && (
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
+              Showing {displayListings.length} of {listings.length} listings
+            </div>
+          )}
+        </div>
 
         {/* Error */}
         {error && <div className="alert alert-error">{error}</div>}
@@ -135,7 +174,7 @@ export default function ListingsPage() {
         {/* Listings grid */}
         {!loading && listings.length > 0 && (
           <div className="listings-grid">
-            {listings.map(listing => (
+            {displayListings.map(listing => (
               <div
                 key={listing.id}
                 className="listing-card"
