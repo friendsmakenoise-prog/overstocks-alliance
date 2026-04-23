@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './lib/AuthContext'
+import { AuthProvider, useAuth } from './lib/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import Nav from './components/Nav'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import { PendingPage, AccessDeniedPage } from './pages/HoldingPages'
 import DashboardPage from './pages/DashboardPage'
+import AdminDashboardPage from './pages/AdminDashboardPage'
 import ListingsPage from './pages/ListingsPage'
 import ListingDetailPage from './pages/ListingDetailPage'
 import CreateListingPage from './pages/CreateListingPage'
@@ -26,6 +27,15 @@ function Layout({ children }) {
   )
 }
 
+// Shows admin dashboard for admins, buyer/seller dashboard for everyone else
+function HomeDashboard() {
+  const { profile } = useAuth()
+  if (profile?.role === 'admin') {
+    return <Layout><AdminDashboardPage /></Layout>
+  }
+  return <Layout><DashboardPage /></Layout>
+}
+
 // Separate component so it can use useAuth inside AuthProvider
 function AppRoutes() {
   return (
@@ -38,10 +48,10 @@ function AppRoutes() {
       <Route path="/pending"       element={<PendingPage />} />
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
-      {/* Dashboard */}
+      {/* Home — admin gets admin dashboard, others get buyer/seller dashboard */}
       <Route path="/" element={
         <ProtectedRoute>
-          <Layout><DashboardPage /></Layout>
+          <HomeDashboard />
         </ProtectedRoute>
       } />
 
