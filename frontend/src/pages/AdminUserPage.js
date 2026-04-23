@@ -34,18 +34,27 @@ export default function AdminUserPage() {
 
   async function loadAll() {
     setLoading(true)
+    setError('')
     try {
-      const [userResp, brandsResp, permsResp] = await Promise.all([
-        supabase.from('user_profiles').select('*').eq('id', id).single(),
+      const [userResp, brandsResp, permsResp, listingsResp] = await Promise.all([
+        api.admin.getUser(id),
         api.admin.getBrands(),
-        api.admin.getUserPermissions(id)
+        api.admin.getUserPermissions(id),
+        api.admin.getListings({ seller_id: id })
       ])
 
-      setUser(userResp.data)
+      if (!userResp.user) {
+        setError('User not found')
+        setLoading(false)
+        return
+      }
+
+      setUser(userResp.user)
       setBrands(brandsResp.brands || [])
       setPermissions(permsResp.permissions || [])
+      setListings(listingsResp.listings || [])
 
-      // Load brand applications
+      // Load brand applications for this user
       const { data: apps } = await supabase
         .from('brand_applications')
         .select('*, brand:brand_id(id, name)')
@@ -53,13 +62,9 @@ export default function AdminUserPage() {
         .order('applied_at', { ascending: false })
       setBrandApplications(apps || [])
 
-      // Load all listings for this user (admin sees all statuses)
-      const listingsResp = await api.admin.getListings({})
-      const userListings = (listingsResp.listings || []).filter(l => l.seller?.id === id)
-      setListings(userListings)
-
     } catch (err) {
-      setError('Failed to load user')
+      console.error('AdminUserPage error:', err)
+      setError('Failed to load user: ' + (err.message || 'Unknown error'))
     } finally {
       setLoading(false)
     }
