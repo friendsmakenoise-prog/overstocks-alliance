@@ -287,6 +287,11 @@ export default function DashboardPage() {
                     Payment settings <span>→</span>
                   </button>
                 )}
+                {(profile?.role === 'supplier' || profile?.role === 'retailer') && (
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/brands')}>
+                    Apply for brand access <span>→</span>
+                  </button>
+                )}
               </div>
             </div>
 
