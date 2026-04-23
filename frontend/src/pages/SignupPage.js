@@ -184,6 +184,22 @@ export default function SignupPage() {
                 }
               </p>
 
+              {/* Supplier-only: dealership tier guidance */}
+              {isSupplier && (
+                <div style={{
+                  padding: '10px 14px',
+                  background: 'var(--amber-bg)',
+                  border: '1px solid rgba(180,83,9,0.2)',
+                  borderRadius: 'var(--radius)',
+                  marginBottom: 12,
+                  fontSize: 12,
+                  color: 'var(--amber)',
+                  lineHeight: 1.6
+                }}>
+                  <strong>If your brand uses dealership tiers</strong> — for example Gold, Platinum, or Premier dealer levels — please register each tier as a separate brand entry using the "Other" field below (e.g. "Roland Gold", "Roland Platinum"). This allows us to match retailers to the correct product access level during review.
+                </div>
+              )}
+
               {brandsLoading ? (
                 <div style={{ padding: '12px 0', color: 'var(--muted)', fontSize: 13 }}>Loading brands…</div>
               ) : activeBrands.length === 0 ? (
