@@ -171,7 +171,7 @@ export default function ListingsPage() {
 
                   <div className="listing-card-shipping">
                     {listing.shipping_mode === 'included'
-                      ? `Shipping included — ${formatPrice(listing.shipping_cost_pence)}`
+                      ? `Shipping available — ${formatPrice(listing.shipping_cost_pence)} (buyer can accept or arrange own)`
                       : 'Buyer arranges shipping'
                     }
                   </div>
