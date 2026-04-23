@@ -75,7 +75,7 @@ function layout(content) {
         <!-- Footer -->
         <tr>
           <td style="padding:24px 0 0;font-size:12px;color:#8896A7;line-height:1.6;">
-            Overstocks Alliance — Private B2B Stock Trading Network<br>
+            Overstocks Alliance — Private trading for authorised brand partners.<br>
             This is an automated message. Please do not reply to this email.<br>
             <a href="${FRONTEND_URL}/terms" style="color:#8896A7;">Terms and Conditions</a>
           </td>
