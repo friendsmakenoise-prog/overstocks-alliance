@@ -62,8 +62,16 @@ export const api = {
   getConnectStatus:     ()         => apiRequest('GET', '/api/payments/connect/status'),
   startConnectOnboard:  ()         => apiRequest('POST', '/api/payments/connect/onboard'),
 
-  // Admin
+  // Brand reviews (supplier)
+  getMyBrandReviews:    ()              => apiRequest('GET', '/api/brand-reviews/mine'),
+  respondToBrandReview: (id, data)      => apiRequest('POST', `/api/brand-reviews/${id}/respond`, data),
+
+  // Admin brand reviews
   admin: {
+    getBrandApplications: (params = {}) => apiRequest('GET', '/api/brand-reviews/admin/applications?' + new URLSearchParams(params)),
+    requestBrandReview:   (applicationId, supplierId) => apiRequest('POST', '/api/brand-reviews/admin/request-review', { applicationId, supplierId }),
+    decideBrandApplication: (id, decision, notes) => apiRequest('POST', `/api/brand-reviews/admin/applications/${id}/decide`, { decision, notes }),
+    getSuppliersForBrand: (brandId) => apiRequest('GET', `/api/brand-reviews/admin/suppliers-for-brand/${brandId}`),
     getUsers:      (params = {}) => apiRequest('GET', '/api/admin/users?' + new URLSearchParams(params)),
     approveUser:   (id)          => apiRequest('POST', `/api/admin/users/${id}/approve`),
     rejectUser:    (id, reason)  => apiRequest('POST', `/api/admin/users/${id}/reject`, { reason }),
