@@ -173,7 +173,7 @@ export default function AdminDashboardPage() {
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 14 }}>
             Platform activity
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+          <div className="stat-cards">
             {[
               { label: 'Total members', value: stats?.totalUsers || 0, sub: `${stats?.suppliers || 0} suppliers · ${stats?.retailers || 0} retailers` },
               { label: 'Active listings', value: stats?.activeListings || 0, sub: `${stats?.soldListings || 0} sold` },
@@ -190,7 +190,7 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
+        <div className="grid-2" style={{ alignItems: 'start' }}>
 
           {/* Left column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
