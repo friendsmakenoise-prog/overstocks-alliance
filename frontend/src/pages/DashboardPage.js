@@ -533,12 +533,41 @@ function OfferCard({ offer, profile, actionLoading, checkoutLoading, counterForm
 function BrandReviewCard({ review, onRespond }) {
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingFamily, setLoadingFamily] = useState(true)
   const [responded, setResponded] = useState(false)
+  const [familyApps, setFamilyApps] = useState([])
+  // Per-brand decisions: { [applicationId]: true/false }
+  const [brandDecisions, setBrandDecisions] = useState({})
 
-  async function respond(decision) {
+  useEffect(() => {
+    loadFamily()
+  }, [review.id])
+
+  async function loadFamily() {
+    try {
+      const data = await api.getBrandFamilyApplications(review.applicant?.id)
+      const apps = data.applications || []
+      setFamilyApps(apps)
+      // Default all to approved
+      const defaults = {}
+      apps.forEach(a => { defaults[a.id] = true })
+      setBrandDecisions(defaults)
+    } catch { /* silent */ }
+    finally { setLoadingFamily(false) }
+  }
+
+  async function respond(overallDecision) {
     setLoading(true)
     try {
-      await api.respondToBrandReview(review.id, { decision, notes })
+      const decisions = familyApps.length > 1
+        ? familyApps.map(a => ({ applicationId: a.id, approved: brandDecisions[a.id] !== false }))
+        : null
+
+      await api.respondToBrandReview(review.id, {
+        decision: overallDecision,
+        notes,
+        brandDecisions: decisions
+      })
       setResponded(true)
       onRespond()
     } catch (err) {
@@ -556,28 +585,22 @@ function BrandReviewCard({ review, onRespond }) {
     )
   }
 
+  const approvedCount = familyApps.filter(a => brandDecisions[a.id] !== false).length
+
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: 10 }}>
       <div style={{ padding: '12px 14px', background: 'var(--surface)' }}>
         <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>
-          Brand eligibility check — <span style={{ color: 'var(--gold)' }}>{review.brand?.name}</span>
+          Brand eligibility — <span style={{ color: 'var(--gold)' }}>{review.brand?.name}</span>
         </div>
 
-        {/* Applicant details — visible to supplier for verification purposes only */}
-        <div style={{
-          padding: '10px 12px', background: 'var(--white)',
-          borderRadius: 'var(--radius)', border: '1px solid var(--border)',
-          marginBottom: 8
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-            Applicant details
+        {/* Applicant details */}
+        <div style={{ padding: '10px 12px', background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Applicant</div>
+          <div style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 500 }}>
+            {review.applicant?.company_name || 'Name unavailable'}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 500, marginBottom: 2 }}>
-            {review.applicant?.company_name || 'Company name unavailable'}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-            <span style={{ textTransform: 'capitalize' }}>{review.applicant?.role}</span>
-          </div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{review.applicant?.role}</div>
         </div>
 
         <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -587,29 +610,69 @@ function BrandReviewCard({ review, onRespond }) {
       </div>
 
       <div style={{ padding: '12px 14px' }}>
-        <p style={{ fontSize: 13, color: 'var(--slate)', marginBottom: 12 }}>
-          Is <strong>{review.applicant?.company_name}</strong> an authorised{' '}
-          {review.applicant?.role} of <strong>{review.brand?.name}</strong>?
-        </p>
+
+        {/* Family brand tick/untick */}
+        {loadingFamily ? (
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>Loading brand tiers…</div>
+        ) : familyApps.length > 1 ? (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'var(--navy)' }}>
+              Tick the tiers this applicant is authorised for:
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {familyApps.map(app => (
+                <label key={app.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 12px',
+                  background: brandDecisions[app.id] !== false ? 'var(--green-bg)' : 'var(--surface)',
+                  border: '1.5px solid',
+                  borderColor: brandDecisions[app.id] !== false ? 'var(--green)' : 'var(--border)',
+                  borderRadius: 'var(--radius)',
+                  cursor: 'pointer',
+                  transition: 'all 0.12s',
+                  fontSize: 13
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={brandDecisions[app.id] !== false}
+                    onChange={e => setBrandDecisions(prev => ({ ...prev, [app.id]: e.target.checked }))}
+                    style={{ accentColor: 'var(--green)', flexShrink: 0 }}
+                  />
+                  <span style={{ fontWeight: 500, color: brandDecisions[app.id] !== false ? 'var(--green)' : 'var(--slate)' }}>
+                    {app.brand?.name}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>
+              {approvedCount} of {familyApps.length} tier{familyApps.length !== 1 ? 's' : ''} selected
+            </div>
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--slate)', marginBottom: 12 }}>
+            Is <strong>{review.applicant?.company_name}</strong> an authorised {review.applicant?.role} of <strong>{review.brand?.name}</strong>?
+          </p>
+        )}
 
         <div className="form-group" style={{ marginBottom: 10 }}>
-          <label className="form-label">Your notes (optional)</label>
+          <label className="form-label">Notes (optional)</label>
           <textarea
             className="form-input" rows={2}
             value={notes} onChange={e => setNotes(e.target.value)}
             maxLength={500}
-            placeholder="Any context for the admin about this applicant's eligibility…"
+            placeholder="Any context for the admin…"
             style={{ resize: 'none' }}
           />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+
+        <div className="grid-2" style={{ gap: 8 }}>
           <button
             className="btn btn-outline btn-sm"
             style={{ justifyContent: 'center', borderColor: 'var(--green)', color: 'var(--green)' }}
             onClick={() => respond('approved')}
             disabled={loading}
           >
-            ✓ Recommend approval
+            ✓ {familyApps.length > 1 ? `Approve ${approvedCount} tier${approvedCount !== 1 ? 's' : ''}` : 'Recommend approval'}
           </button>
           <button
             className="btn btn-danger btn-sm"
@@ -617,12 +680,11 @@ function BrandReviewCard({ review, onRespond }) {
             onClick={() => respond('declined')}
             disabled={loading}
           >
-            ✗ Recommend decline
+            ✗ Decline all
           </button>
         </div>
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
           Your recommendation is advisory — the final decision rests with the platform admin.
-          This applicant's details are shared only for verification and will not be visible during trading.
         </p>
       </div>
     </div>
