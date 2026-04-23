@@ -174,6 +174,23 @@ export default function SignupPage() {
               You'll be identified only by an anonymous handle.
             </div>
 
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  required
+                  style={{ marginTop: 2, accentColor: 'var(--navy)', flexShrink: 0 }}
+                />
+                <span style={{ color: 'var(--slate)', lineHeight: 1.5 }}>
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" style={{ color: 'var(--navy)', fontWeight: 500 }}>
+                    Terms and Conditions
+                  </a>
+                  {' '}and confirm that I am acting on behalf of a registered business. I understand that all transactions must be completed through the platform.
+                </span>
+              </label>
+            </div>
+
             <button
               type="submit" className="btn btn-primary btn-lg"
               style={{ width: '100%', justifyContent: 'center' }}
