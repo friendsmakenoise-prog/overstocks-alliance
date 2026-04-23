@@ -286,7 +286,7 @@ export default function CreateListingPage() {
             {/* Price + Quantity */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div className="form-group">
-                <label className="form-label">Total asking price (£) *</label>
+                <label className="form-label">Price per unit (£) *</label>
                 <input
                   className="form-input" type="number"
                   min="0.01" step="0.01"
@@ -323,7 +323,7 @@ export default function CreateListingPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
                 {[
                   { value: 'buyer_arranges', label: 'Buyer arranges shipping', hint: 'Buyer collects or books their own courier' },
-                  { value: 'included', label: 'Shipping included', hint: 'You will arrange and pay for delivery' }
+                  { value: 'included', label: 'Optional shipping charge', hint: 'Set a shipping cost — buyer can accept or arrange their own' }
                 ].map(opt => (
                   <label
                     key={opt.value}
@@ -360,7 +360,7 @@ export default function CreateListingPage() {
                     placeholder="0.00"
                     style={{ maxWidth: 200 }}
                   />
-                  <span className="form-hint">Added to the total at checkout. Platform fee applies to goods value only.</span>
+                  <span className="form-hint">Buyer can accept this charge or arrange their own delivery. Platform fee applies to goods value only.</span>
                 </div>
               )}
             </div>
