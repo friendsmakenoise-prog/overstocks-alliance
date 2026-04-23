@@ -3,6 +3,7 @@ import { api } from '../lib/api'
 
 export default function AdminBrandApplicationsPage() {
   const [applications, setApplications] = useState([])
+  const [brands, setBrands] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -12,8 +13,18 @@ export default function AdminBrandApplicationsPage() {
   const [deciding, setDeciding] = useState(null)
   const [decisionNotes, setDecisionNotes] = useState('')
   const [filterStatus, setFilterStatus] = useState('pending')
+  const [linkingBrand, setLinkingBrand] = useState(null) // appId being linked
+  const [linkBrandId, setLinkBrandId] = useState('')     // selected brand UUID
 
   useEffect(() => { loadApplications() }, [filterStatus])
+  useEffect(() => { loadBrands() }, [])
+
+  async function loadBrands() {
+    try {
+      const data = await api.admin.getBrands()
+      setBrands(data.brands || [])
+    } catch { /* silent */ }
+  }
 
   async function loadApplications() {
     setLoading(true)
@@ -33,6 +44,20 @@ export default function AdminBrandApplicationsPage() {
       const data = await api.admin.getSuppliersForBrand(brandId)
       setSuppliersForBrand(prev => ({ ...prev, [brandId]: data.suppliers || [] }))
     } catch { /* silent */ }
+  }
+
+  async function linkBrand(applicationId) {
+    if (!linkBrandId) return setError('Please select a brand to link')
+    setError('')
+    try {
+      await api.admin.linkBrandApplication(applicationId, linkBrandId)
+      setSuccess('Application linked to brand — approve button is now enabled')
+      setLinkingBrand(null)
+      setLinkBrandId('')
+      await loadApplications()
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   async function sendReview(applicationId, supplierId) {
@@ -187,11 +212,11 @@ export default function AdminBrandApplicationsPage() {
                                   color: review.status === 'pending' ? 'var(--amber)' : review.status === 'approved' ? 'var(--green)' : 'var(--red)',
                                   textTransform: 'capitalize'
                                 }}>
-                                  {review.status === 'pending' ? 'Awaiting response' : review.status}
+                                  {review.status === 'pending' ? '⏳ Awaiting response' : review.status === 'approved' ? '✓ Recommends approval' : '✗ Recommends decline'}
                                 </span>
                               </div>
                               {review.supplier_notes && (
-                                <div style={{ fontSize: 12, color: 'var(--slate)', fontStyle: 'italic' }}>
+                                <div style={{ fontSize: 12, color: 'var(--slate)', fontStyle: 'italic', marginTop: 4 }}>
                                   "{review.supplier_notes}"
                                 </div>
                               )}
@@ -246,11 +271,49 @@ export default function AdminBrandApplicationsPage() {
                         </div>
                       )}
 
-                      {/* Unregistered brand note */}
+                      {/* Unregistered brand — offer to link or register */}
                       {app.is_other && (
-                        <div className="alert alert-warning" style={{ marginBottom: 20 }}>
-                          This application is for an unregistered brand: <strong>{app.brand_name_text}</strong>.
-                          You'll need to manually add this brand to the platform before granting access.
+                        <div style={{ marginBottom: 20 }}>
+                          <div className="alert alert-warning" style={{ marginBottom: 12 }}>
+                            This application is for an unregistered brand: <strong>{app.brand_name_text}</strong>.
+                            If this brand exists on the platform, link it below. Otherwise add the brand first in the Users &amp; listings panel.
+                          </div>
+
+                          {linkingBrand === app.id ? (
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <select
+                                className="form-input"
+                                style={{ flex: 1, minWidth: 180 }}
+                                value={linkBrandId}
+                                onChange={e => setLinkBrandId(e.target.value)}
+                              >
+                                <option value="">Select a brand…</option>
+                                {brands.map(b => (
+                                  <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                              </select>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => linkBrand(app.id)}
+                                disabled={!linkBrandId}
+                              >
+                                Link brand
+                              </button>
+                              <button
+                                className="btn btn-outline btn-sm"
+                                onClick={() => { setLinkingBrand(null); setLinkBrandId('') }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="btn btn-outline btn-sm"
+                              onClick={() => setLinkingBrand(app.id)}
+                            >
+                              🔗 Link to existing brand
+                            </button>
+                          )}
                         </div>
                       )}
 
