@@ -89,6 +89,7 @@ export default function Nav() {
                   {isAdmin && (
                     <>
                       <Link to="/admin" className={isActive('/admin')}>Users & listings</Link>
+                      <Link to="/admin/brand-applications" className={isActive('/admin/brand-applications')}>Brand applications</Link>
                       <Link to="/admin/finance" className={isActive('/admin/finance')}>Finance</Link>
                     </>
                   )}
