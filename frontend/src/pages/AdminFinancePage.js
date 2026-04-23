@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 
@@ -6,314 +7,402 @@ function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export default function AdminFinancePage() {
-  const [orders, setOrders] = useState([])
-  const [feeTiers, setFeeTiers] = useState([])
+export default function AdminDashboardPage() {
+  const navigate = useNavigate()
+  const [stats, setStats] = useState(null)
+  const [recentOrders, setRecentOrders] = useState([])
+  const [pendingUsers, setPendingUsers] = useState([])
+  const [pendingListings, setPendingListings] = useState([])
+  const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
-  const [savingTiers, setSavingTiers] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [editTiers, setEditTiers] = useState([])
 
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
     setLoading(true)
     try {
-      // Load paid orders with offer and listing details
-      const { data: paidOffers, error: offersError } = await supabase
+      const [
+        usersResp,
+        brandsResp,
+        listingsResp,
+        reportsResp
+      ] = await Promise.all([
+        api.admin.getUsers({ status: 'pending' }),
+        api.admin.getBrands(),
+        api.admin.getListings({ status: 'pending_review' }),
+        api.admin.getReports()
+      ])
+
+      setPendingUsers(usersResp.users || [])
+      setPendingListings(listingsResp.listings || [])
+      setReports(reportsResp.reports || [])
+
+      // Load financial stats directly from Supabase
+      const { data: paidOffers } = await supabase
         .from('offers')
-        .select(`
-          id, agreed_price_pence, offered_price_pence, quantity,
-          platform_fee_pence, platform_fee_pct, seller_payout_pence,
-          shipping_cost_pence, shipping_mode,
-          created_at, updated_at,
-          listing:listing_id ( id, title, brands(name) ),
-          buyer:buyer_id ( anonymous_handle ),
-          seller:seller_id ( anonymous_handle )
-        `)
+        .select('agreed_price_pence, offered_price_pence, quantity, platform_fee_pence, seller_payout_pence, updated_at')
         .eq('status', 'paid')
         .order('updated_at', { ascending: false })
 
-      if (offersError) throw offersError
-      setOrders(paidOffers || [])
+      const { data: allUsers } = await supabase
+        .from('user_profiles')
+        .select('id, status, role, created_at')
 
-      // Load fee tiers
-      const { data: tiers, error: tiersError } = await supabase
-        .from('fee_config')
-        .select('*')
-        .eq('active', true)
-        .order('min_value_pence', { ascending: true })
+      const { data: allListings } = await supabase
+        .from('listings')
+        .select('id, status')
 
-      if (tiersError) throw tiersError
-      setFeeTiers(tiers || [])
-      setEditTiers(tiers?.map(t => ({ ...t })) || [])
+      const { data: allOffers } = await supabase
+        .from('offers')
+        .select('id, status')
+
+      // Calculate stats
+      const totalFees = (paidOffers || []).reduce((s, o) => s + (o.platform_fee_pence || 0), 0)
+      const totalGoodsValue = (paidOffers || []).reduce((s, o) =>
+        s + ((o.agreed_price_pence || o.offered_price_pence) * o.quantity), 0)
+      const totalTransactions = (paidOffers || []).length
+
+      setStats({
+        // Financial
+        totalFees,
+        totalGoodsValue,
+        totalTransactions,
+        // Users
+        totalUsers: (allUsers || []).length,
+        pendingUsers: (allUsers || []).filter(u => u.status === 'pending').length,
+        approvedUsers: (allUsers || []).filter(u => u.status === 'approved').length,
+        suppliers: (allUsers || []).filter(u => u.role === 'supplier').length,
+        retailers: (allUsers || []).filter(u => u.role === 'retailer').length,
+        // Listings
+        activeListings: (allListings || []).filter(l => l.status === 'active').length,
+        pendingListings: (allListings || []).filter(l => l.status === 'pending_review').length,
+        soldListings: (allListings || []).filter(l => l.status === 'sold').length,
+        // Offers
+        activeOffers: (allOffers || []).filter(o => ['pending','countered','accepted'].includes(o.status)).length,
+        // Brands
+        totalBrands: (brandsResp.brands || []).length,
+        // Reports
+        openReports: (reportsResp.reports || []).length
+      })
+
+      setRecentOrders((paidOffers || []).slice(0, 5))
 
     } catch (err) {
-      setError('Failed to load finance data')
+      console.error(err)
+      setError('Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
   }
 
-  async function saveTiers() {
-    setSavingTiers(true)
-    setError('')
-    setSuccess('')
+  async function quickApproveUser(id) {
     try {
-      for (const tier of editTiers) {
-        const pct = parseFloat(tier.fee_percentage)
-        if (isNaN(pct) || pct < 0 || pct > 100) {
-          throw new Error(`Invalid percentage for ${tier.tier_name}`)
-        }
-
-        const minPence = Math.round(parseFloat(tier.min_value_pounds || tier.min_value_pence / 100) * 100)
-        const maxPence = tier.max_value_pounds !== undefined
-          ? (tier.max_value_pounds === '' || tier.max_value_pounds === null ? null : Math.round(parseFloat(tier.max_value_pounds) * 100))
-          : tier.max_value_pence
-
-        const { error } = await supabase
-          .from('fee_config')
-          .update({
-            fee_percentage: pct,
-            min_value_pence: minPence,
-            max_value_pence: maxPence,
-            tier_name: tier.tier_name
-          })
-          .eq('id', tier.id)
-
-        if (error) throw error
-      }
-      setSuccess('Fee tiers updated successfully')
-      await loadAll()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSavingTiers(false)
-    }
+      await api.admin.approveUser(id)
+      setPendingUsers(u => u.filter(x => x.id !== id))
+      setStats(s => s ? { ...s, pendingUsers: s.pendingUsers - 1, approvedUsers: s.approvedUsers + 1 } : s)
+    } catch (err) { setError(err.message) }
   }
 
-  function updateTier(id, field, value) {
-    setEditTiers(tiers => tiers.map(t =>
-      t.id === id ? { ...t, [field]: value } : t
-    ))
+  async function quickApproveListing(id) {
+    try {
+      await api.admin.approveListing(id)
+      setPendingListings(l => l.filter(x => x.id !== id))
+      setStats(s => s ? { ...s, pendingListings: s.pendingListings - 1, activeListings: s.activeListings + 1 } : s)
+    } catch (err) { setError(err.message) }
   }
-
-  // Calculate totals
-  const totalGoodsValue = orders.reduce((sum, o) =>
-    sum + ((o.agreed_price_pence || o.offered_price_pence) * o.quantity), 0)
-  const totalPlatformFees = orders.reduce((sum, o) => sum + (o.platform_fee_pence || 0), 0)
-  const totalShipping = orders.reduce((sum, o) => sum + (o.shipping_cost_pence || 0), 0)
-  const totalTransactions = orders.length
 
   if (loading) return <div className="loading-page"><div className="spinner" /></div>
+
+  const urgentCount = (stats?.pendingUsers || 0) + (stats?.pendingListings || 0) + (stats?.openReports || 0)
 
   return (
     <div className="page">
       <div className="container">
 
+        {/* Header */}
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
-            Finance
+            Admin dashboard
           </h1>
-          <p style={{ color: 'var(--slate)', fontSize: 14 }}>
-            Platform revenue, transaction history and fee configuration
+          <p style={{ color: urgentCount > 0 ? 'var(--amber)' : 'var(--slate)', fontSize: 14, fontWeight: urgentCount > 0 ? 500 : 400 }}>
+            {urgentCount > 0
+              ? `⚡ ${urgentCount} item${urgentCount !== 1 ? 's' : ''} require your attention`
+              : '✓ All clear — nothing requiring immediate attention'
+            }
           </p>
         </div>
 
-        {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
-        {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
+        {error && <div className="alert alert-error" style={{ marginBottom: 20 }}>{error}</div>}
 
-        {/* Summary cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 32 }}>
-          {[
-            { label: 'Total transactions', value: totalTransactions, format: false },
-            { label: 'Total goods value', value: totalGoodsValue, format: true },
-            { label: 'Platform fees earned', value: totalPlatformFees, format: true, highlight: true },
-            { label: 'Shipping processed', value: totalShipping, format: true },
-          ].map((card, i) => (
-            <div key={i} style={{
-              background: card.highlight ? 'var(--navy)' : 'var(--white)',
-              border: `1px solid ${card.highlight ? 'var(--navy)' : 'var(--border)'}`,
-              borderRadius: 'var(--radius-lg)',
-              padding: '16px 20px'
-            }}>
-              <div style={{
-                fontSize: 28,
-                fontFamily: 'var(--font-display)',
-                color: card.highlight ? 'var(--gold-light)' : 'var(--navy)',
-                fontWeight: 400,
-                marginBottom: 4
-              }}>
-                {card.format ? formatPrice(card.value) : card.value}
+        {/* ── FINANCIAL HIGHLIGHTS ── */}
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 14 }}>
+            Platform revenue
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Platform fees earned', value: formatPrice(stats?.totalFees || 0), highlight: true },
+              { label: 'Total goods transacted', value: formatPrice(stats?.totalGoodsValue || 0) },
+              { label: 'Completed transactions', value: stats?.totalTransactions || 0 },
+              { label: 'Offers in progress', value: stats?.activeOffers || 0 },
+            ].map((card, i) => (
+              <div key={i} style={{
+                background: card.highlight ? 'var(--navy)' : 'var(--white)',
+                border: `1px solid ${card.highlight ? 'var(--navy)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius-lg)', padding: '16px 20px',
+                cursor: card.onClick ? 'pointer' : 'default'
+              }} onClick={card.onClick}>
+                <div style={{
+                  fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 400,
+                  color: card.highlight ? 'var(--gold-light)' : 'var(--navy)',
+                  marginBottom: 4
+                }}>
+                  {card.value}
+                </div>
+                <div style={{ fontSize: 13, color: card.highlight ? 'rgba(255,255,255,0.6)' : 'var(--muted)' }}>
+                  {card.label}
+                </div>
               </div>
-              <div style={{
-                fontSize: 13,
-                color: card.highlight ? 'rgba(255,255,255,0.6)' : 'var(--muted)'
-              }}>
-                {card.label}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
-
-          {/* Transaction history */}
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 16 }}>
-              Transaction history
-            </h2>
-
-            {orders.length === 0 ? (
-              <div className="empty-state">
-                <h3>No completed transactions yet</h3>
-                <p>Paid orders will appear here.</p>
+        {/* ── PLATFORM ACTIVITY ── */}
+        <div style={{ marginBottom: 28 }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 14 }}>
+            Platform activity
+          </h2>
+          <div className="stat-cards">
+            {[
+              { label: 'Total members', value: stats?.totalUsers || 0, sub: `${stats?.suppliers || 0} suppliers · ${stats?.retailers || 0} retailers` },
+              { label: 'Active listings', value: stats?.activeListings || 0, sub: `${stats?.soldListings || 0} sold` },
+              { label: 'Total brands', value: stats?.totalBrands || 0, sub: 'Registered on platform' },
+            ].map((card, i) => (
+              <div key={i} className="card" style={{ padding: '16px 20px' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--navy)', marginBottom: 2 }}>
+                  {card.value}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--slate)', marginBottom: 2 }}>{card.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{card.sub}</div>
               </div>
-            ) : (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Listing</th>
-                      <th>Brand</th>
-                      <th>Qty</th>
-                      <th>Goods value</th>
-                      <th>Fee</th>
-                      <th>Seller payout</th>
-                      <th>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(order => {
-                      const goodsValue = (order.agreed_price_pence || order.offered_price_pence) * order.quantity
-                      return (
-                        <tr key={order.id}>
-                          <td>
-                            <div style={{ fontWeight: 500, fontSize: 13 }}>{order.listing?.title}</div>
-                            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                              {order.buyer?.anonymous_handle} → {order.seller?.anonymous_handle}
-                            </div>
-                          </td>
-                          <td style={{ fontSize: 13 }}>{order.listing?.brands?.name}</td>
-                          <td style={{ fontSize: 13 }}>{order.quantity}</td>
-                          <td style={{ fontSize: 13, fontWeight: 500 }}>{formatPrice(goodsValue)}</td>
-                          <td>
-                            <div style={{ fontSize: 13, color: 'var(--green)', fontWeight: 500 }}>
-                              {formatPrice(order.platform_fee_pence || 0)}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                              {order.platform_fee_pct}%
-                            </div>
-                          </td>
-                          <td style={{ fontSize: 13 }}>{formatPrice(order.seller_payout_pence || 0)}</td>
-                          <td style={{ fontSize: 12, color: 'var(--muted)' }}>
-                            {new Date(order.updated_at).toLocaleDateString('en-GB', {
-                              day: 'numeric', month: 'short', year: 'numeric'
-                            })}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                  {/* Totals row */}
-                  <tfoot>
-                    <tr style={{ background: 'var(--surface)', fontWeight: 500 }}>
-                      <td colSpan={3} style={{ padding: '12px 16px', fontSize: 13 }}>
-                        Totals ({totalTransactions} transaction{totalTransactions !== 1 ? 's' : ''})
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>{formatPrice(totalGoodsValue)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--green)', fontWeight: 600 }}>
-                        {formatPrice(totalPlatformFees)}
-                      </td>
-                      <td colSpan={2} style={{ padding: '12px 16px', fontSize: 13 }}>
-                        {formatPrice(orders.reduce((s, o) => s + (o.seller_payout_pence || 0), 0))}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid-2" style={{ alignItems: 'start' }}>
+
+          {/* Left column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Pending user approvals */}
+            <section>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+                  Pending approvals
+                  {pendingUsers.length > 0 && (
+                    <span style={{ marginLeft: 8, background: 'var(--amber)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
+                      {pendingUsers.length}
+                    </span>
+                  )}
+                </h2>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                  View all →
+                </button>
               </div>
-            )}
+
+              {pendingUsers.length === 0 ? (
+                <div className="card" style={{ padding: '16px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  ✓ No pending applications
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {pendingUsers.slice(0, 5).map((user, i) => (
+                    <div key={user.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderBottom: i < pendingUsers.length - 1 ? '1px solid var(--border)' : 'none'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: 13 }}>{user.company_name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                          {user.email} · <span style={{ textTransform: 'capitalize' }}>{user.role}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => quickApproveUser(user.id)}>
+                          Approve
+                        </button>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                          Review →
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {pendingUsers.length > 5 && (
+                    <div style={{ padding: '10px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
+                      +{pendingUsers.length - 5} more — <button onClick={() => navigate('/admin')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Pending listings */}
+            <section>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+                  Listing review
+                  {pendingListings.length > 0 && (
+                    <span style={{ marginLeft: 8, background: 'var(--amber)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
+                      {pendingListings.length}
+                    </span>
+                  )}
+                </h2>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                  View all →
+                </button>
+              </div>
+
+              {pendingListings.length === 0 ? (
+                <div className="card" style={{ padding: '16px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  ✓ No listings awaiting review
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {pendingListings.slice(0, 5).map((listing, i) => (
+                    <div key={listing.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderBottom: i < pendingListings.length - 1 ? '1px solid var(--border)' : 'none'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: 13 }}>{listing.title}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                          {listing.brands?.name} · £{(listing.price_pence / 100).toFixed(2)}/unit
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-outline btn-sm" onClick={() => quickApproveListing(listing.id)}>
+                          Approve
+                        </button>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                          Review →
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {pendingListings.length > 5 && (
+                    <div style={{ padding: '10px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
+                      +{pendingListings.length - 5} more — <button onClick={() => navigate('/admin')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
           </div>
 
-          {/* Fee tier configuration */}
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 16 }}>
-              Fee tiers
-            </h2>
-            <div className="card">
-              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-                Platform fee percentage applied based on total goods value. Changes take effect on new transactions immediately.
-              </p>
+          {/* Right column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
-                {editTiers.map(tier => (
-                  <div key={tier.id} style={{
-                    padding: '12px 14px',
-                    background: 'var(--surface)',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)'
-                  }}>
-                    <div className="form-group" style={{ marginBottom: 10 }}>
-                      <label className="form-label">Tier name</label>
-                      <input
-                        className="form-input"
-                        type="text"
-                        value={tier.tier_name}
-                        onChange={e => updateTier(tier.id, 'tier_name', e.target.value)}
-                      />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Min (£)</label>
-                        <input
-                          className="form-input"
-                          type="number" min="0" step="1"
-                          value={tier.min_value_pounds ?? (tier.min_value_pence / 100)}
-                          onChange={e => updateTier(tier.id, 'min_value_pounds', e.target.value)}
-                        />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Max (£)</label>
-                        <input
-                          className="form-input"
-                          type="number" min="0" step="1"
-                          value={tier.max_value_pounds ?? (tier.max_value_pence !== null ? tier.max_value_pence / 100 : '')}
-                          onChange={e => updateTier(tier.id, 'max_value_pounds', e.target.value)}
-                          placeholder="No limit"
-                        />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Fee %</label>
-                        <input
-                          className="form-input"
-                          type="number" min="0" max="100" step="0.1"
-                          value={tier.fee_percentage}
-                          onChange={e => updateTier(tier.id, 'fee_percentage', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
-                      {tier.max_value_pence === null
-                        ? `Orders over £${(tier.min_value_pence / 100).toLocaleString()} → ${tier.fee_percentage}%`
-                        : `£${(tier.min_value_pence / 100).toLocaleString()} – £${(tier.max_value_pence / 100).toLocaleString()} → ${tier.fee_percentage}%`
-                      }
-                    </div>
-                  </div>
-                ))}
+            {/* Open reports */}
+            <section>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+                  Open reports
+                  {reports.length > 0 && (
+                    <span style={{ marginLeft: 8, background: 'var(--red)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
+                      {reports.length}
+                    </span>
+                  )}
+                </h2>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                  View all →
+                </button>
               </div>
 
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={saveTiers}
-                disabled={savingTiers}
-              >
-                {savingTiers ? 'Saving…' : 'Save fee tiers'}
-              </button>
+              {reports.length === 0 ? (
+                <div className="card" style={{ padding: '16px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  ✓ No open reports
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {reports.slice(0, 4).map((report, i) => (
+                    <div key={report.id} style={{
+                      padding: '12px 16px',
+                      borderBottom: i < reports.length - 1 ? '1px solid var(--border)' : 'none'
+                    }}>
+                      <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 2 }}>{report.listing?.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 4 }}>{report.reason}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                        Reported by {report.reporter?.anonymous_handle} · {new Date(report.created_at).toLocaleDateString('en-GB')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
-              <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--amber-bg)', borderRadius: 'var(--radius)', fontSize: 12, color: 'var(--amber)' }}>
-                ⚠️ Changes apply to new transactions only — existing accepted offers use the fee calculated at offer creation.
+            {/* Recent transactions */}
+            <section>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>Recent transactions</h2>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin/finance')}>
+                  Full report →
+                </button>
+              </div>
+
+              {recentOrders.length === 0 ? (
+                <div className="card" style={{ padding: '16px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  No completed transactions yet
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {recentOrders.map((order, i) => {
+                    const goodsValue = (order.agreed_price_pence || order.offered_price_pence) * order.quantity
+                    return (
+                      <div key={order.id} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '12px 16px',
+                        borderBottom: i < recentOrders.length - 1 ? '1px solid var(--border)' : 'none'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{formatPrice(goodsValue)}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                            {new Date(order.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 13, color: 'var(--green)', fontWeight: 500 }}>
+                            +{formatPrice(order.platform_fee_pence || 0)}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>platform fee</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Quick links */}
+            <div className="card">
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 14 }}>Quick links</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { label: 'Manage users & brands', path: '/admin' },
+                  { label: 'Brand applications', path: '/admin/brand-applications' },
+                  { label: 'Finance & fee settings', path: '/admin/finance' },
+                ].map(link => (
+                  <button
+                    key={link.path}
+                    className="btn btn-outline"
+                    style={{ justifyContent: 'space-between' }}
+                    onClick={() => navigate(link.path)}
+                  >
+                    {link.label} <span>→</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
