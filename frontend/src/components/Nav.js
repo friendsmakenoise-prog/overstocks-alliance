@@ -70,6 +70,7 @@ export default function Nav() {
     ...(profile.role === 'supplier' || profile.role === 'retailer' ? [
       { to: '/listings/new', label: '+ New listing' },
       { to: '/my-listings', label: 'My listings' },
+      { to: '/settings/brands', label: 'Brands' },
     ] : []),
   ]
 
