@@ -93,7 +93,7 @@ export default function ListingDetailPage() {
           ← Back to listings
         </button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 32, alignItems: 'start' }}>
+        <div className="layout-main-sidebar">
 
           {/* Left: Images + description */}
           <div>
