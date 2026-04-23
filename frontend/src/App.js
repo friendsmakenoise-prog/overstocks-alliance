@@ -5,6 +5,8 @@ import Nav from './components/Nav'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import { PendingPage, AccessDeniedPage } from './pages/HoldingPages'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import TermsPage from './pages/TermsPage'
 import DashboardPage from './pages/DashboardPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import ListingsPage from './pages/ListingsPage'
@@ -41,8 +43,10 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/login"  element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/login"          element={<LoginPage />} />
+      <Route path="/signup"         element={<SignupPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/terms"          element={<TermsPage />} />
 
       {/* Holding pages */}
       <Route path="/pending"       element={<PendingPage />} />
