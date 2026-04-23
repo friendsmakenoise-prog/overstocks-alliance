@@ -96,7 +96,7 @@ router.post('/signup', async (req, res) => {
       }
     }
 
-    // "Other" brand freetext — try to match against existing brands first
+    // "Other" brand freetext — try exact match, then family/prefix match
     if (otherBrand && otherBrand.trim()) {
       const otherBrands = otherBrand.split(',').map(b => b.trim()).filter(Boolean)
 
@@ -107,24 +107,56 @@ router.post('/signup', async (req, res) => {
         .eq('status', 'active')
 
       for (const brandName of otherBrands) {
-        // Case-insensitive exact match against existing brands
-        const matched = (existingBrands || []).find(
-          b => b.name.toLowerCase() === brandName.toLowerCase()
+        const nameLower = brandName.toLowerCase()
+
+        // 1. Exact match
+        const exactMatch = (existingBrands || []).find(
+          b => b.name.toLowerCase() === nameLower
         )
 
-        if (matched) {
-          // Found a match — link to real brand instead of saving as Other
-          // Only add if not already in selectedBrands
-          const alreadySelected = selectedBrands && selectedBrands.includes(matched.id)
+        if (exactMatch) {
+          const alreadySelected = selectedBrands && selectedBrands.includes(exactMatch.id)
           if (!alreadySelected) {
             brandApplications.push({
               user_id: authData.user.id,
-              brand_id: matched.id,
+              brand_id: exactMatch.id,
               is_other: false
             })
           }
+          continue
+        }
+
+        // 2. Family/prefix match — find all brands that START with this name
+        // e.g. "Roland" matches "Roland", "Roland — Keys", "Roland Gold" etc.
+        const familyMatches = (existingBrands || []).filter(b => {
+          const bLower = b.name.toLowerCase()
+          // Matches if brand name starts with the search term
+          // followed by nothing, a space, a dash, or a separator
+          return bLower === nameLower ||
+            bLower.startsWith(nameLower + ' ') ||
+            bLower.startsWith(nameLower + ' —') ||
+            bLower.startsWith(nameLower + ' -') ||
+            bLower.startsWith(nameLower + '-') ||
+            bLower.startsWith(nameLower + ':')
+        })
+
+        if (familyMatches.length > 0) {
+          // Create applications for ALL family members
+          // Supplier will tick/untick which tiers to approve during review
+          for (const match of familyMatches) {
+            const alreadySelected = selectedBrands && selectedBrands.includes(match.id)
+            if (!alreadySelected) {
+              brandApplications.push({
+                user_id: authData.user.id,
+                brand_id: match.id,
+                is_other: false,
+                // Store the original search term so admin knows this was a family match
+                review_notes: `Family match from "${brandName}"`
+              })
+            }
+          }
         } else {
-          // No match — save as Other for admin to review
+          // No match at all — save as Other for admin to review
           brandApplications.push({
             user_id: authData.user.id,
             brand_id: null,
