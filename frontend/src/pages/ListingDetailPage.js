@@ -77,7 +77,7 @@ export default function ListingDetailPage() {
 
   const totalValue = listing.price_pence * listing.quantity
   const shippingLine = listing.shipping_mode === 'included'
-    ? `Shipping included — ${formatPrice(listing.shipping_cost_pence)}`
+    ? `Shipping available — ${formatPrice(listing.shipping_cost_pence)}`
     : 'Buyer arranges own shipping'
 
   return (
