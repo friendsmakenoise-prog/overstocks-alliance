@@ -50,10 +50,13 @@ export default function LoginPage() {
       <div style={{ maxWidth: 400, width: '100%', padding: '0 16px' }}>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, marginBottom: 6 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, marginBottom: 8 }}>
             Overstocks <span style={{ color: 'var(--gold)' }}>Alliance</span>
           </h1>
-          <p style={{ color: 'var(--slate)', fontSize: 15 }}>
+          <p style={{ color: 'var(--navy)', fontSize: 15, fontWeight: 500, marginBottom: 6 }}>
+            Private trading for authorised brand partners.
+          </p>
+          <p style={{ color: 'var(--muted)', fontSize: 13 }}>
             Sign in to your account
           </p>
         </div>
