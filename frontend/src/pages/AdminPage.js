@@ -22,6 +22,16 @@ export default function AdminPage() {
   const [previewListing, setPreviewListing] = useState(null)
   const [previewImageIndex, setPreviewImageIndex] = useState(0)
 
+  // Search & filter state
+  const [userSearch, setUserSearch]       = useState('')
+  const [userRoleFilter, setUserRoleFilter] = useState('')
+  const [userStatusFilter, setUserStatusFilter] = useState('')
+  const [userSort, setUserSort]           = useState('newest')
+  const [brandSearch, setBrandSearch]     = useState('')
+  const [brandSort, setBrandSort]         = useState('az')
+  const [listingSearch, setListingSearch] = useState('')
+  const [listingBrandFilter, setListingBrandFilter] = useState('')
+
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
@@ -112,11 +122,43 @@ export default function AdminPage() {
     setPreviewImageIndex(0)
   }
 
+  // Filtered data — computed from search/filter state
+  const filteredUsers = allUsers.filter(u => {
+    const q = userSearch.toLowerCase()
+    const matchQ = !q || u.company_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.contact_name?.toLowerCase().includes(q) || u.anonymous_handle?.toLowerCase().includes(q)
+    const matchRole   = !userRoleFilter   || u.role === userRoleFilter
+    const matchStatus = !userStatusFilter || u.status === userStatusFilter
+    return matchQ && matchRole && matchStatus
+  }).sort((a, b) => {
+    if (userSort === 'az')     return (a.company_name || '').localeCompare(b.company_name || '')
+    if (userSort === 'za')     return (b.company_name || '').localeCompare(a.company_name || '')
+    if (userSort === 'newest') return new Date(b.created_at) - new Date(a.created_at)
+    if (userSort === 'oldest') return new Date(a.created_at) - new Date(b.created_at)
+    return 0
+  })
+
+  const filteredBrands = brands.filter(b => {
+    const q = brandSearch.toLowerCase()
+    return !q || b.name?.toLowerCase().includes(q) || b.slug?.toLowerCase().includes(q)
+  }).sort((a, b) => {
+    if (brandSort === 'az') return (a.name || '').localeCompare(b.name || '')
+    if (brandSort === 'za') return (b.name || '').localeCompare(a.name || '')
+    if (brandSort === 'newest') return new Date(b.created_at) - new Date(a.created_at)
+    return 0
+  })
+
+  const filteredListings = listings.filter(l => {
+    const q = listingSearch.toLowerCase()
+    const matchQ = !q || l.title?.toLowerCase().includes(q) || l.seller?.company_name?.toLowerCase().includes(q)
+    const matchBrand = !listingBrandFilter || l.brands?.id === listingBrandFilter
+    return matchQ && matchBrand
+  })
+
   const tabs = [
-    { key: 'pending',  label: `Pending approval (${pendingUsers.length})` },
-    { key: 'allusers', label: `All users (${allUsers.length})` },
-    { key: 'listings', label: `Listing review (${listings.length})` },
-    { key: 'brands',   label: 'Brands' },
+    { key: 'pending',  label: `Pending (${pendingUsers.length})` },
+    { key: 'allusers', label: `Users (${filteredUsers.length}${filteredUsers.length !== allUsers.length ? '/' + allUsers.length : ''})` },
+    { key: 'listings', label: `Listings (${listings.length})` },
+    { key: 'brands',   label: `Brands (${filteredBrands.length}${filteredBrands.length !== brands.length ? '/' + brands.length : ''})` },
     { key: 'reports',  label: `Reports (${reports.length})` },
   ]
 
@@ -249,40 +291,101 @@ export default function AdminPage() {
 
         {/* ALL USERS */}
         {tab === 'allusers' && (
-          allUsers.length === 0
-            ? <div className="empty-state"><h3>No users yet</h3></div>
-            : <div className="card table-scroll" style={{ padding: 0, overflow: 'hidden' }}>
-                <table className="table">
-                  <thead><tr><th>Company</th><th className="hide-mobile">Contact</th><th>Role</th><th>Status</th><th className="hide-mobile">Joined</th><th></th></tr></thead>
-                  <tbody>
-                    {allUsers.map(u => (
-                      <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/users/${u.id}`)}>
-                        <td><div style={{ fontWeight: 500 }}>{u.company_name}</div><div style={{ fontSize: 12, color: 'var(--muted)' }}>{u.email}</div></td>
-                        <td className="hide-mobile" style={{ fontSize: 13 }}>{u.contact_name}</td>
-                        <td><span className="badge badge-draft" style={{ textTransform: 'capitalize' }}>{u.role}</span></td>
-                        <td><span className={`badge badge-${u.status}`}>{u.status}</span></td>
-                        <td className="hide-mobile" style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(u.created_at).toLocaleDateString('en-GB')}</td>
-                        <td style={{ color: 'var(--navy)', fontSize: 13, fontWeight: 500 }}>Manage →</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <div>
+            {/* Search & filter bar */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input
+                className="form-input"
+                style={{ flex: '1 1 200px', minWidth: 160 }}
+                type="search"
+                placeholder="Search by company, email, name…"
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+              />
+              <select className="form-input" style={{ flex: '0 1 130px' }} value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}>
+                <option value="">All roles</option>
+                <option value="retailer">Retailer</option>
+                <option value="supplier">Supplier</option>
+                <option value="admin">Admin</option>
+              </select>
+              <select className="form-input" style={{ flex: '0 1 140px' }} value={userStatusFilter} onChange={e => setUserStatusFilter(e.target.value)}>
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="suspended">Suspended</option>
+                <option value="rejected">Cancelled</option>
+              </select>
+              <select className="form-input" style={{ flex: '0 1 130px' }} value={userSort} onChange={e => setUserSort(e.target.value)}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="az">A → Z</option>
+                <option value="za">Z → A</option>
+              </select>
+              {(userSearch || userRoleFilter || userStatusFilter) && (
+                <button className="btn btn-outline btn-sm" onClick={() => { setUserSearch(''); setUserRoleFilter(''); setUserStatusFilter('') }}>
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {filteredUsers.length === 0
+              ? <div className="empty-state"><h3>No users match your search</h3></div>
+              : <div className="card table-scroll" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="table">
+                    <thead><tr><th>Company</th><th className="hide-mobile">Contact</th><th>Role</th><th>Status</th><th className="hide-mobile">Joined</th><th></th></tr></thead>
+                    <tbody>
+                      {filteredUsers.map(u => (
+                        <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/users/${u.id}`)}>
+                          <td>
+                            <div style={{ fontWeight: 500 }}>{u.company_name}</div>
+                            <div style={{ fontSize: 12, color: 'var(--muted)' }}>{u.email}</div>
+                          </td>
+                          <td className="hide-mobile" style={{ fontSize: 13 }}>{u.contact_name}</td>
+                          <td><span className="badge badge-draft" style={{ textTransform: 'capitalize' }}>{u.role}</span></td>
+                          <td><span className={`badge badge-${u.status}`}>{u.status}</span></td>
+                          <td className="hide-mobile" style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(u.created_at).toLocaleDateString('en-GB')}</td>
+                          <td style={{ color: 'var(--navy)', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>Manage →</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+            }
+          </div>
         )}
 
         {/* LISTING REVIEW */}
         {tab === 'listings' && (
+          <div>
+            {/* Search & filter bar */}
+            <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input
+                className="form-input"
+                style={{ flex: '1 1 200px', minWidth: 160 }}
+                type="search"
+                placeholder="Search by title or seller…"
+                value={listingSearch}
+                onChange={e => setListingSearch(e.target.value)}
+              />
+              <select className="form-input" style={{ flex: '0 1 160px' }} value={listingBrandFilter} onChange={e => setListingBrandFilter(e.target.value)}>
+                <option value="">All brands</option>
+                {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              {(listingSearch || listingBrandFilter) && (
+                <button className="btn btn-outline btn-sm" onClick={() => { setListingSearch(''); setListingBrandFilter('') }}>Clear</button>
+              )}
+            </div>
           <div style={{ display: 'grid', gridTemplateColumns: previewListing ? '1fr 420px' : '1fr', gap: 24, alignItems: 'start' }}>
 
             {/* Listings table */}
             <div>
-              {listings.length === 0
-                ? <div className="empty-state"><h3>No listings awaiting review</h3></div>
+              {filteredListings.length === 0
+                ? <div className="empty-state"><h3>No listings match your search</h3></div>
                 : <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <table className="table">
-                      <thead><tr><th>Listing</th><th>Brand</th><th>Price</th><th>Seller</th><th>Submitted</th><th></th></tr></thead>
+                      <thead><tr><th>Listing</th><th>Brand</th><th>Price</th><th className="hide-mobile">Seller</th><th className="hide-mobile">Submitted</th><th></th></tr></thead>
                       <tbody>
-                        {listings.map(l => (
+                        {filteredListings.map(l => (
                           <tr
                             key={l.id}
                             style={{ background: previewListing?.id === l.id ? 'var(--surface)' : 'transparent' }}
@@ -307,11 +410,11 @@ export default function AdminPage() {
                             </td>
                             <td>{l.brands?.name}</td>
                             <td>{formatPrice(l.price_pence)}</td>
-                            <td style={{ fontSize: 12, color: 'var(--muted)' }}>
+                            <td style={{ color: 'var(--muted)', fontSize: 13 }}>
                               {l.seller?.anonymous_handle}<br />
                               <span style={{ color: 'var(--slate)' }}>{l.seller?.company_name}</span>
                             </td>
-                            <td style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(l.created_at).toLocaleDateString('en-GB')}</td>
+                            <td className="hide-mobile" style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(l.created_at).toLocaleDateString('en-GB')}</td>
                             <td>
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                 <button className="btn btn-outline btn-sm" onClick={() => approveListing(l.id)}>Approve</button>
@@ -456,32 +559,63 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+          </div>
         )}
 
         {/* BRANDS */}
         {tab === 'brands' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }}>
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <table className="table">
-                <thead><tr><th>Brand name</th><th>Slug</th><th>Status</th><th>Created</th></tr></thead>
-                <tbody>
-                  {brands.map(b => (
-                    <tr key={b.id}>
-                      <td style={{ fontWeight: 500 }}>{b.name}</td>
-                      <td style={{ color: 'var(--muted)', fontSize: 13 }}>{b.slug}</td>
-                      <td><span className={`badge badge-${b.status}`}>{b.status}</span></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(b.created_at).toLocaleDateString('en-GB')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="layout-main-sidebar">
+            <div>
+              {/* Search & sort bar */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  className="form-input"
+                  style={{ flex: '1 1 200px', minWidth: 160 }}
+                  type="search"
+                  placeholder="Search brands…"
+                  value={brandSearch}
+                  onChange={e => setBrandSearch(e.target.value)}
+                />
+                <select className="form-input" style={{ flex: '0 1 140px' }} value={brandSort} onChange={e => setBrandSort(e.target.value)}>
+                  <option value="az">A → Z</option>
+                  <option value="za">Z → A</option>
+                  <option value="newest">Newest first</option>
+                </select>
+                {brandSearch && (
+                  <button className="btn btn-outline btn-sm" onClick={() => setBrandSearch('')}>Clear</button>
+                )}
+              </div>
+              <div className="card table-scroll" style={{ padding: 0, overflow: 'hidden' }}>
+                {filteredBrands.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 14 }}>
+                    No brands match "{brandSearch}"
+                  </div>
+                ) : (
+                  <table className="table">
+                    <thead><tr><th>Brand name</th><th className="hide-mobile">Slug</th><th>Status</th><th className="hide-mobile">Created</th></tr></thead>
+                    <tbody>
+                      {filteredBrands.map(b => (
+                        <tr key={b.id}>
+                          <td style={{ fontWeight: 500 }}>{b.name}</td>
+                          <td className="hide-mobile" style={{ color: 'var(--muted)', fontSize: 13 }}>{b.slug}</td>
+                          <td><span className={`badge badge-${b.status}`}>{b.status}</span></td>
+                          <td className="hide-mobile" style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(b.created_at).toLocaleDateString('en-GB')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)', textAlign: 'right' }}>
+                Showing {filteredBrands.length} of {brands.length} brands
+              </div>
             </div>
             <div className="card">
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 16 }}>Add a brand</h3>
               <form onSubmit={createBrand}>
                 <div className="form-group">
                   <label className="form-label">Brand name</label>
-                  <input className="form-input" type="text" value={newBrand} onChange={e => setNewBrand(e.target.value)} required placeholder="e.g. Nike" />
+                  <input className="form-input" type="text" value={newBrand} onChange={e => setNewBrand(e.target.value)} required placeholder="e.g. Gibson" />
                 </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Create brand</button>
               </form>
