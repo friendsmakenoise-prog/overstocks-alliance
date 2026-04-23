@@ -391,6 +391,7 @@ export default function AdminDashboardPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
                   { label: 'Manage users & brands', path: '/admin' },
+                  { label: 'Brand applications', path: '/admin/brand-applications' },
                   { label: 'Finance & fee settings', path: '/admin/finance' },
                 ].map(link => (
                   <button
