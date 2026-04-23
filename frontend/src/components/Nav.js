@@ -10,8 +10,9 @@ export default function Nav() {
   const [urgentCount, setUrgentCount] = useState(0)
 
   const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
+  const isAdmin = profile?.role === 'admin'
 
-  // Poll for urgent offers every 60 seconds
+  // Poll for urgent items — different logic for admin vs regular users
   useEffect(() => {
     if (!profile) return
     checkUrgent()
@@ -21,17 +22,32 @@ export default function Nav() {
 
   async function checkUrgent() {
     try {
-      const data = await api.getOffers()
-      const urgent = (data.offers || []).filter(o => {
-        const isSeller = o.seller?.id === profile?.id
-        const isBuyer  = o.buyer?.id  === profile?.id
-        return (
-          (isSeller && o.status === 'pending') ||
-          (isBuyer  && o.status === 'countered') ||
-          (isBuyer  && o.status === 'accepted')
+      if (isAdmin) {
+        // Admin: count pending users + pending listings + open reports
+        const [users, listings, reports] = await Promise.all([
+          api.admin.getUsers({ status: 'pending' }),
+          api.admin.getListings({ status: 'pending_review' }),
+          api.admin.getReports()
+        ])
+        setUrgentCount(
+          (users.users?.length || 0) +
+          (listings.listings?.length || 0) +
+          (reports.reports?.length || 0)
         )
-      })
-      setUrgentCount(urgent.length)
+      } else {
+        // Regular user: count offers needing action
+        const data = await api.getOffers()
+        const urgent = (data.offers || []).filter(o => {
+          const isSeller = o.seller?.id === profile?.id
+          const isBuyer  = o.buyer?.id  === profile?.id
+          return (
+            (isSeller && o.status === 'pending') ||
+            (isBuyer  && o.status === 'countered') ||
+            (isBuyer  && o.status === 'accepted')
+          )
+        })
+        setUrgentCount(urgent.length)
+      }
     } catch { /* silent fail */ }
   }
 
@@ -52,9 +68,9 @@ export default function Nav() {
             <>
               {profile && (
                 <>
-                  {/* Dashboard with notification badge */}
+                  {/* Dashboard link with notification badge */}
                   <Link to="/" className={isActive('/')} style={{ position: 'relative' }}>
-                    Dashboard
+                    {isAdmin ? 'Dashboard' : 'Dashboard'}
                     {urgentCount > 0 && (
                       <span style={{
                         position: 'absolute', top: 2, right: -4,
@@ -64,25 +80,29 @@ export default function Nav() {
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         lineHeight: 1
                       }}>
-                        {urgentCount}
+                        {urgentCount > 9 ? '9+' : urgentCount}
                       </span>
                     )}
                   </Link>
 
-                  <Link to="/listings" className={isActive('/listings')}>Browse</Link>
-
-                  {(profile.role === 'supplier' || profile.role === 'retailer') && (
-                    <Link to="/listings/new" className={isActive('/listings/new')}>+ New listing</Link>
-                  )}
-
-                  {(profile.role === 'supplier' || profile.role === 'retailer') && (
-                    <Link to="/my-listings" className={isActive('/my-listings')}>My listings</Link>
-                  )}
-
-                  {profile.role === 'admin' && (
+                  {/* Admin nav — management only */}
+                  {isAdmin && (
                     <>
-                      <Link to="/admin" className={isActive('/admin')}>Admin</Link>
+                      <Link to="/admin" className={isActive('/admin')}>Users & listings</Link>
                       <Link to="/admin/finance" className={isActive('/admin/finance')}>Finance</Link>
+                    </>
+                  )}
+
+                  {/* Regular user nav */}
+                  {!isAdmin && (
+                    <>
+                      <Link to="/listings" className={isActive('/listings')}>Browse</Link>
+                      {(profile.role === 'supplier' || profile.role === 'retailer') && (
+                        <Link to="/listings/new" className={isActive('/listings/new')}>+ New listing</Link>
+                      )}
+                      {(profile.role === 'supplier' || profile.role === 'retailer') && (
+                        <Link to="/my-listings" className={isActive('/my-listings')}>My listings</Link>
+                      )}
                     </>
                   )}
 
