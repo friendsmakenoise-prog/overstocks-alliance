@@ -291,7 +291,7 @@ export default function MyListingsPage() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                       <div className="form-group">
-                        <label className="form-label">Price (£) *</label>
+                        <label className="form-label">Price per unit (£) *</label>
                         <input
                           className="form-input" type="number"
                           min="0.01" step="0.01"
@@ -324,7 +324,7 @@ export default function MyListingsPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                         {[
                           { value: 'buyer_arranges', label: 'Buyer arranges shipping' },
-                          { value: 'included', label: 'Shipping included' }
+                          { value: 'included', label: 'Optional shipping charge' }
                         ].map(opt => (
                           <label key={opt.value} style={{
                             display: 'flex', alignItems: 'center', gap: 8,
