@@ -63,15 +63,16 @@ export const api = {
   startConnectOnboard:  ()         => apiRequest('POST', '/api/payments/connect/onboard'),
 
   // Brand reviews (supplier)
-  getMyBrandReviews:    ()              => apiRequest('GET', '/api/brand-reviews/mine'),
-  respondToBrandReview: (id, data)      => apiRequest('POST', `/api/brand-reviews/${id}/respond`, data),
+  getMyBrandReviews:          ()         => apiRequest('GET', '/api/brand-reviews/mine'),
+  getBrandFamilyApplications: (applicantId) => apiRequest('GET', `/api/brand-reviews/mine/family/${applicantId}`),
+  respondToBrandReview:       (id, data) => apiRequest('POST', `/api/brand-reviews/${id}/respond`, data),
 
   // Admin brand reviews
   admin: {
     getBrandApplications: (params = {}) => apiRequest('GET', '/api/brand-reviews/admin/applications?' + new URLSearchParams(params)),
     requestBrandReview:   (applicationId, supplierId) => apiRequest('POST', '/api/brand-reviews/admin/request-review', { applicationId, supplierId }),
     decideBrandApplication: (id, decision, notes) => apiRequest('POST', `/api/brand-reviews/admin/applications/${id}/decide`, { decision, notes }),
-    linkBrandApplication: (id, brandId) => apiRequest('POST', `/api/brand-reviews/admin/applications/${id}/link-brand`, { brandId }),
+    linkBrandApplication: (id, brandId, useFamily = false) => apiRequest('POST', `/api/brand-reviews/admin/applications/${id}/link-brand`, { brandId, useFamily }),
     getSuppliersForBrand: (brandId) => apiRequest('GET', `/api/brand-reviews/admin/suppliers-for-brand/${brandId}`),
     getUser:       (id)            => apiRequest('GET', `/api/admin/users/${id}`),
     getUsers:      (params = {}) => apiRequest('GET', '/api/admin/users?' + new URLSearchParams(params)),
