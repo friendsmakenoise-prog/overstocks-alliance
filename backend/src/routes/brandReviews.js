@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { supabaseAdmin } = require('../../config/supabase')
 const { requireAuth, requireRole } = require('../middleware/auth')
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+const email = require('../services/email')
 
 // ============================================================
 // BRAND REVIEW ROUTES
@@ -19,7 +19,7 @@ router.get('/mine', requireAuth, requireRole('supplier'), async (req, res) => {
       .select(`
         id, status, supplier_notes, requested_at, responded_at, expires_at,
         brand:brand_id ( id, name ),
-        applicant:applicant_id ( id, anonymous_handle, role ),
+        applicant:applicant_id ( id, anonymous_handle, role, company_name ),
         application:brand_application_id ( id, status )
       `)
       .eq('supplier_id', req.user.id)
@@ -196,8 +196,13 @@ router.post('/admin/request-review', requireAuth, requireRole('admin'), async (r
       .update({ status: 'reviewing' })
       .eq('id', applicationId)
 
-    // Send email to supplier via Supabase
-    await sendSupplierReviewEmail(supplier, application)
+    // Send email to supplier
+    await email.sendBrandReviewRequest({
+      email: supplier.email,
+      brandName: application.brand?.name || 'Unknown brand',
+      applicantRole: application.user_id ? 'member' : 'applicant',
+      reviewId: review.id
+    })
 
     await supabaseAdmin.from('audit_log').insert({
       admin_id: req.user.id,
@@ -271,6 +276,62 @@ router.post('/admin/applications/:id/decide', requireAuth, requireRole('admin'),
 })
 
 /**
+ * POST /api/brand-reviews/admin/applications/:id/link-brand
+ * Admin: link an "Other" application to a real brand
+ */
+router.post('/admin/applications/:id/link-brand', requireAuth, requireRole('admin'), async (req, res) => {
+  try {
+    const { brandId } = req.body
+    if (!brandId) return res.status(400).json({ error: 'brandId required' })
+
+    // Verify brand exists
+    const { data: brand, error: brandError } = await supabaseAdmin
+      .from('brands')
+      .select('id, name')
+      .eq('id', brandId)
+      .single()
+
+    if (brandError || !brand) return res.status(404).json({ error: 'Brand not found' })
+
+    // Update the application
+    const { data: application, error } = await supabaseAdmin
+      .from('brand_applications')
+      .update({
+        brand_id: brandId,
+        brand_name_text: null,
+        is_other: false
+      })
+      .eq('id', req.params.id)
+      .select('*, user:user_id(id)')
+      .single()
+
+    if (error || !application) return res.status(404).json({ error: 'Application not found' })
+
+    // Also update supplier_brand_distributions if this is a supplier
+    await supabaseAdmin
+      .from('supplier_brand_distributions')
+      .upsert({
+        supplier_id: application.user.id,
+        brand_id: brandId,
+        is_other: false
+      }, { onConflict: 'supplier_id,brand_id', ignoreDuplicates: true })
+
+    await supabaseAdmin.from('audit_log').insert({
+      admin_id: req.user.id,
+      action: 'link_application_to_brand',
+      target_type: 'brand_application',
+      target_id: req.params.id,
+      metadata: { brand_id: brandId, brand_name: brand.name }
+    })
+
+    res.json({ message: `Application linked to ${brand.name}`, application })
+  } catch (err) {
+    console.error('Link brand error:', err)
+    res.status(500).json({ error: 'Failed to link brand' })
+  }
+})
+
+/**
  * GET /api/brand-reviews/admin/suppliers-for-brand/:brandId
  * Admin: get suppliers who distribute a specific brand
  */
@@ -290,20 +351,5 @@ router.get('/admin/suppliers-for-brand/:brandId', requireAuth, requireRole('admi
     res.status(500).json({ error: 'Failed to fetch suppliers' })
   }
 })
-
-// ── Email helper ──────────────────────────────────────────────
-async function sendSupplierReviewEmail(supplier, application) {
-  try {
-    // Use Supabase's email function via admin API
-    // In production replace with Resend/SendGrid for more control
-    const frontendUrl = process.env.FRONTEND_URL || 'https://overstocks-alliance.vercel.app'
-    console.log(`EMAIL: Sending review request to ${supplier.email} for brand ${application.brand?.name}`)
-    // TODO: integrate with email provider (Resend recommended)
-    // For now logs the intent — email setup covered in next iteration
-  } catch (err) {
-    console.error('Email send error:', err)
-    // Don't fail the request if email fails
-  }
-}
 
 module.exports = router
