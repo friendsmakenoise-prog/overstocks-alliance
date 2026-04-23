@@ -46,12 +46,12 @@ export default function AdminBrandApplicationsPage() {
     } catch { /* silent */ }
   }
 
-  async function linkBrand(applicationId) {
+  async function linkBrand(applicationId, useFamily = false) {
     if (!linkBrandId) return setError('Please select a brand to link')
     setError('')
     try {
-      await api.admin.linkBrandApplication(applicationId, linkBrandId)
-      setSuccess('Application linked to brand — approve button is now enabled')
+      const result = await api.admin.linkBrandApplication(applicationId, linkBrandId, useFamily)
+      setSuccess(result.message || 'Application linked — approve button is now enabled')
       setLinkingBrand(null)
       setLinkBrandId('')
       await loadApplications()
@@ -280,31 +280,45 @@ export default function AdminBrandApplicationsPage() {
                           </div>
 
                           {linkingBrand === app.id ? (
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                              <select
-                                className="form-input"
-                                style={{ flex: 1, minWidth: 180 }}
-                                value={linkBrandId}
-                                onChange={e => setLinkBrandId(e.target.value)}
-                              >
-                                <option value="">Select a brand…</option>
-                                {brands.map(b => (
-                                  <option key={b.id} value={b.id}>{b.name}</option>
-                                ))}
-                              </select>
-                              <button
-                                className="btn btn-primary btn-sm"
-                                onClick={() => linkBrand(app.id)}
-                                disabled={!linkBrandId}
-                              >
-                                Link brand
-                              </button>
-                              <button
-                                className="btn btn-outline btn-sm"
-                                onClick={() => { setLinkingBrand(null); setLinkBrandId('') }}
-                              >
-                                Cancel
-                              </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <select
+                                  className="form-input"
+                                  style={{ flex: 1, minWidth: 180 }}
+                                  value={linkBrandId}
+                                  onChange={e => setLinkBrandId(e.target.value)}
+                                >
+                                  <option value="">Select a brand…</option>
+                                  {brands.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => linkBrand(app.id, false)}
+                                  disabled={!linkBrandId}
+                                >
+                                  Link this brand
+                                </button>
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  onClick={() => linkBrand(app.id, true)}
+                                  disabled={!linkBrandId}
+                                >
+                                  Link all family brands
+                                </button>
+                                <button
+                                  className="btn btn-outline btn-sm"
+                                  onClick={() => { setLinkingBrand(null); setLinkBrandId('') }}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                              {linkBrandId && (
+                                <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                                  <strong>Link all family brands</strong> will also create applications for all brands starting with the same name — e.g. selecting "Roland" will also apply for "Roland — Keys", "Roland Gold" etc. Useful when an applicant typed the parent brand name.
+                                </p>
+                              )}
                             </div>
                           ) : (
                             <button
