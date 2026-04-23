@@ -5,6 +5,29 @@ const { requireAuth, requireRole } = require('../middleware/auth')
 const email = require('../services/email')
 
 // ============================================================
+// BRAND FAMILY MATCHING HELPER
+// Finds all brands that start with a given name prefix.
+// e.g. "Roland" matches "Roland", "Roland — Keys", "Roland Gold"
+// ============================================================
+async function findBrandFamily(brandName) {
+  const { data: allBrands } = await supabaseAdmin
+    .from('brands')
+    .select('id, name')
+    .eq('status', 'active')
+
+  const nameLower = brandName.toLowerCase()
+  return (allBrands || []).filter(b => {
+    const bLower = b.name.toLowerCase()
+    return bLower === nameLower ||
+      bLower.startsWith(nameLower + ' ') ||
+      bLower.startsWith(nameLower + ' —') ||
+      bLower.startsWith(nameLower + ' -') ||
+      bLower.startsWith(nameLower + '-') ||
+      bLower.startsWith(nameLower + ':')
+  })
+}
+
+// ============================================================
 // BRAND REVIEW ROUTES
 // ============================================================
 
@@ -39,7 +62,9 @@ router.get('/mine', requireAuth, requireRole('supplier'), async (req, res) => {
  */
 router.post('/:id/respond', requireAuth, requireRole('supplier'), async (req, res) => {
   try {
-    const { decision, notes } = req.body
+    const { decision, notes, brandDecisions } = req.body
+    // brandDecisions is an optional array of { applicationId, approved }
+    // for when the supplier is reviewing a family of brands
 
     if (!['approved', 'declined'].includes(decision)) {
       return res.status(400).json({ error: 'Decision must be approved or declined' })
@@ -57,6 +82,7 @@ router.post('/:id/respond', requireAuth, requireRole('supplier'), async (req, re
       return res.status(404).json({ error: 'Review not found or already responded' })
     }
 
+    // Update main review
     const { data: updated, error } = await supabaseAdmin
       .from('brand_eligibility_reviews')
       .update({
@@ -70,22 +96,37 @@ router.post('/:id/respond', requireAuth, requireRole('supplier'), async (req, re
 
     if (error) throw error
 
-    // Update application status to show supplier has responded
-    await supabaseAdmin
-      .from('brand_applications')
-      .update({ status: 'reviewing' })
-      .eq('id', review.brand_application_id)
+    // If per-brand decisions provided, update individual applications
+    if (brandDecisions && Array.isArray(brandDecisions) && brandDecisions.length > 0) {
+      for (const bd of brandDecisions) {
+        await supabaseAdmin
+          .from('brand_applications')
+          .update({
+            status: 'reviewing',
+            review_notes: bd.approved
+              ? `Supplier recommends: approved`
+              : `Supplier recommends: declined`
+          })
+          .eq('id', bd.applicationId)
+          .eq('user_id', review.applicant_id)
+      }
+    } else {
+      // Single decision — update the linked application
+      await supabaseAdmin
+        .from('brand_applications')
+        .update({ status: 'reviewing' })
+        .eq('id', review.brand_application_id)
+    }
 
-    // Log for admin audit
     await supabaseAdmin.from('audit_log').insert({
       admin_id: req.user.id,
       action: `supplier_brand_review_${decision}`,
       target_type: 'brand_eligibility_review',
       target_id: req.params.id,
-      metadata: { brand_id: review.brand_id, applicant_id: review.applicant_id, notes }
+      metadata: { brand_id: review.brand_id, applicant_id: review.applicant_id, notes, brandDecisions }
     })
 
-    res.json({ review: updated, message: `Response recorded — admin has been notified` })
+    res.json({ review: updated, message: 'Response recorded — admin has been notified' })
   } catch (err) {
     console.error('Respond to review error:', err)
     res.status(500).json({ error: 'Failed to submit response' })
@@ -277,14 +318,13 @@ router.post('/admin/applications/:id/decide', requireAuth, requireRole('admin'),
 
 /**
  * POST /api/brand-reviews/admin/applications/:id/link-brand
- * Admin: link an "Other" application to a real brand
+ * Admin: link an "Other" application to a real brand (or brand family)
  */
 router.post('/admin/applications/:id/link-brand', requireAuth, requireRole('admin'), async (req, res) => {
   try {
-    const { brandId } = req.body
+    const { brandId, useFamily } = req.body
     if (!brandId) return res.status(400).json({ error: 'brandId required' })
 
-    // Verify brand exists
     const { data: brand, error: brandError } = await supabaseAdmin
       .from('brands')
       .select('id, name')
@@ -293,41 +333,99 @@ router.post('/admin/applications/:id/link-brand', requireAuth, requireRole('admi
 
     if (brandError || !brand) return res.status(404).json({ error: 'Brand not found' })
 
-    // Update the application
-    const { data: application, error } = await supabaseAdmin
+    // Fetch the original application to get user_id and brand_name_text
+    const { data: application, error: appError } = await supabaseAdmin
       .from('brand_applications')
-      .update({
-        brand_id: brandId,
-        brand_name_text: null,
-        is_other: false
-      })
+      .select('*, user:user_id(id, role)')
       .eq('id', req.params.id)
-      .select('*, user:user_id(id)')
       .single()
 
-    if (error || !application) return res.status(404).json({ error: 'Application not found' })
+    if (appError || !application) return res.status(404).json({ error: 'Application not found' })
 
-    // Also update supplier_brand_distributions if this is a supplier
+    // Update the original application
     await supabaseAdmin
-      .from('supplier_brand_distributions')
-      .upsert({
-        supplier_id: application.user.id,
-        brand_id: brandId,
-        is_other: false
-      }, { onConflict: 'supplier_id,brand_id', ignoreDuplicates: true })
+      .from('brand_applications')
+      .update({ brand_id: brandId, brand_name_text: null, is_other: false })
+      .eq('id', req.params.id)
+
+    const linkedBrands = [brand]
+
+    // If useFamily, find all sub-brands and create applications for them too
+    if (useFamily) {
+      const family = await findBrandFamily(brand.name)
+      const siblings = family.filter(b => b.id !== brandId)
+
+      for (const sibling of siblings) {
+        // Check not already applied
+        const { data: existing } = await supabaseAdmin
+          .from('brand_applications')
+          .select('id')
+          .eq('user_id', application.user.id)
+          .eq('brand_id', sibling.id)
+          .single()
+
+        if (!existing) {
+          await supabaseAdmin.from('brand_applications').insert({
+            user_id: application.user.id,
+            brand_id: sibling.id,
+            is_other: false,
+            review_notes: `Family match from "${brand.name}"`
+          })
+          linkedBrands.push(sibling)
+        }
+      }
+    }
 
     await supabaseAdmin.from('audit_log').insert({
       admin_id: req.user.id,
       action: 'link_application_to_brand',
       target_type: 'brand_application',
       target_id: req.params.id,
-      metadata: { brand_id: brandId, brand_name: brand.name }
+      metadata: { brand_id: brandId, brand_name: brand.name, family_count: linkedBrands.length }
     })
 
-    res.json({ message: `Application linked to ${brand.name}`, application })
+    res.json({
+      message: useFamily && linkedBrands.length > 1
+        ? `Linked to ${brand.name} and ${linkedBrands.length - 1} related brand${linkedBrands.length - 1 !== 1 ? 's' : ''}`
+        : `Application linked to ${brand.name}`,
+      linkedBrands
+    })
   } catch (err) {
     console.error('Link brand error:', err)
     res.status(500).json({ error: 'Failed to link brand' })
+  }
+})
+
+/**
+ * GET /api/brand-reviews/mine/family/:applicantId
+ * Supplier: get all brand applications from an applicant for brands they distribute
+ * Used when reviewing a brand family (e.g. all Roland tiers for one applicant)
+ */
+router.get('/mine/family/:applicantId', requireAuth, requireRole('supplier'), async (req, res) => {
+  try {
+    // Get all brands this supplier distributes
+    const { data: distributions } = await supabaseAdmin
+      .from('supplier_brand_distributions')
+      .select('brand_id')
+      .eq('supplier_id', req.user.id)
+
+    const brandIds = (distributions || []).map(d => d.brand_id).filter(Boolean)
+
+    if (brandIds.length === 0) return res.json({ applications: [] })
+
+    // Get all pending applications from this applicant for those brands
+    const { data: applications, error } = await supabaseAdmin
+      .from('brand_applications')
+      .select('id, status, review_notes, applied_at, brand:brand_id(id, name)')
+      .eq('user_id', req.params.applicantId)
+      .in('brand_id', brandIds)
+      .in('status', ['pending', 'reviewing'])
+      .order('applied_at', { ascending: true })
+
+    if (error) throw error
+    res.json({ applications: applications || [] })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch family applications' })
   }
 })
 
