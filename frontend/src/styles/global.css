@@ -236,3 +236,166 @@ input, textarea, select { font-family: var(--font-body); }
   font-family: var(--font-display); font-size: 22px;
   color: var(--slate); margin-bottom: 8px;
 }
+
+/* ============================================================
+   RESPONSIVE / MOBILE STYLES
+   Breakpoints: 768px (tablet), 480px (phone)
+   ============================================================ */
+
+/* ---- MOBILE NAV ---- */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius);
+}
+.nav-hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: rgba(255,255,255,0.85);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.nav-mobile-menu {
+  display: none;
+  flex-direction: column;
+  background: var(--navy-mid);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 8px 16px 16px;
+}
+.nav-mobile-menu.open { display: flex; }
+.nav-mobile-menu .nav-link {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  font-size: 15px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.nav-mobile-menu .nav-link:last-child { border-bottom: none; }
+.nav-mobile-handle {
+  font-size: 12px; color: var(--gold-light);
+  padding: 10px 14px; margin-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ---- RESPONSIVE LAYOUT ---- */
+@media (max-width: 768px) {
+  /* Nav */
+  .nav-links { display: none; }
+  .nav-hamburger { display: flex; }
+  .nav-inner { height: 56px; padding: 0 16px; }
+
+  /* Layout */
+  .container { padding: 0 16px; }
+  .page { padding: 20px 0 60px; }
+
+  /* Typography */
+  h1 { font-size: 26px !important; }
+  h2 { font-size: 20px !important; }
+
+  /* Cards */
+  .card { padding: 16px; }
+
+  /* Listings grid — 1 column on tablet */
+  .listings-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  /* Tables — horizontal scroll */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-scroll .table { min-width: 600px; }
+
+  /* Hide less important table columns on mobile */
+  .table .hide-mobile { display: none; }
+
+  /* Stack two-column grids */
+  .two-col-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Listing detail — stack columns */
+  .listing-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Offer card actions — stack vertically */
+  .offer-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Dashboard summary cards — 2 per row */
+  .summary-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Buttons — full width on mobile where appropriate */
+  .btn-mobile-full {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Form grids — stack on mobile */
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Phone specific */
+  .nav-inner { padding: 0 12px; }
+  .container { padding: 0 12px; }
+  .page { padding: 16px 0 60px; }
+
+  /* Cards tighter on phone */
+  .card { padding: 14px 14px; }
+
+  /* Single column everything */
+  .listings-grid { grid-template-columns: 1fr; }
+  .summary-cards { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Listing card image smaller on phone */
+  .listing-card-image { height: 160px; }
+
+  /* Buttons */
+  .btn-lg { padding: 12px 20px; font-size: 14px; }
+
+  /* Badge wrapping */
+  .badge { font-size: 11px; padding: 2px 8px; }
+
+  /* Tables */
+  .table th, .table td { padding: 10px 12px; font-size: 13px; }
+}
+
+/* ---- TOUCH TARGETS ---- */
+@media (hover: none) and (pointer: coarse) {
+  /* Mobile touch devices — larger tap targets */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 38px; }
+  .form-input { min-height: 44px; }
+  .nav-link { min-height: 44px; display: flex; align-items: center; }
+
+  /* Remove hover effects that don't work on touch */
+  .listing-card:hover {
+    box-shadow: var(--shadow-sm);
+    transform: none;
+  }
+}
+
+/* ---- SAFE AREA (iPhone notch etc) ---- */
+@supports (padding: max(0px)) {
+  .nav { padding-top: env(safe-area-inset-top); }
+  .page { padding-bottom: max(60px, calc(env(safe-area-inset-bottom) + 60px)); }
+}
