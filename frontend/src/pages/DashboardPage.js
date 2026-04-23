@@ -145,7 +145,7 @@ export default function DashboardPage() {
         {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
         {/* Summary cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 32 }}>
+        <div className="stat-cards" style={{ marginBottom: 32 }}>
           {[
             { label: 'Needs attention', value: needsAction.length, urgent: needsAction.length > 0, onClick: () => {} },
             { label: 'Active offers',   value: activeOffers.length, onClick: () => {} },
@@ -169,7 +169,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
+        <div className="layout-main-sidebar">
 
           {/* Main: Needs attention + active offers */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -554,25 +554,46 @@ function BrandReviewCard({ review, onRespond }) {
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: 10 }}>
       <div style={{ padding: '12px 14px', background: 'var(--surface)' }}>
-        <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>
-          Brand: <span style={{ color: 'var(--gold)' }}>{review.brand?.name}</span>
+        <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 8 }}>
+          Brand eligibility check — <span style={{ color: 'var(--gold)' }}>{review.brand?.name}</span>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-          Applicant role: <span style={{ textTransform: 'capitalize' }}>{review.applicant?.role}</span>
-          {' · '}Requested {new Date(review.requested_at).toLocaleDateString('en-GB')}
+
+        {/* Applicant details — visible to supplier for verification purposes only */}
+        <div style={{
+          padding: '10px 12px', background: 'var(--white)',
+          borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+          marginBottom: 8
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+            Applicant details
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 500, marginBottom: 2 }}>
+            {review.applicant?.company_name || 'Company name unavailable'}
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+            <span style={{ textTransform: 'capitalize' }}>{review.applicant?.role}</span>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-          Expires: {new Date(review.expires_at).toLocaleDateString('en-GB')}
+
+        <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <span>Requested {new Date(review.requested_at).toLocaleDateString('en-GB')}</span>
+          <span>Expires {new Date(review.expires_at).toLocaleDateString('en-GB')}</span>
         </div>
       </div>
+
       <div style={{ padding: '12px 14px' }}>
+        <p style={{ fontSize: 13, color: 'var(--slate)', marginBottom: 12 }}>
+          Is <strong>{review.applicant?.company_name}</strong> an authorised{' '}
+          {review.applicant?.role} of <strong>{review.brand?.name}</strong>?
+        </p>
+
         <div className="form-group" style={{ marginBottom: 10 }}>
           <label className="form-label">Your notes (optional)</label>
           <textarea
             className="form-input" rows={2}
             value={notes} onChange={e => setNotes(e.target.value)}
             maxLength={500}
-            placeholder="Any notes for the admin about this applicant's eligibility…"
+            placeholder="Any context for the admin about this applicant's eligibility…"
             style={{ resize: 'none' }}
           />
         </div>
@@ -595,7 +616,8 @@ function BrandReviewCard({ review, onRespond }) {
           </button>
         </div>
         <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
-          Your response is advisory — the final decision rests with the platform admin.
+          Your recommendation is advisory — the final decision rests with the platform admin.
+          This applicant's details are shared only for verification and will not be visible during trading.
         </p>
       </div>
     </div>
