@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [offers, setOffers] = useState([])
   const [myListings, setMyListings] = useState([])
+  const [brandReviews, setBrandReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(null)
   const [counterForm, setCounterForm] = useState({ offerId: null, price: '', message: '' })
@@ -45,12 +46,14 @@ export default function DashboardPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const [offersData, listingsData] = await Promise.all([
-        api.getOffers(),
-        api.getListings()
-      ])
+      const promises = [api.getOffers(), api.getListings()]
+      if (profile?.role === 'supplier') {
+        promises.push(api.getMyBrandReviews())
+      }
+      const [offersData, listingsData, reviewsData] = await Promise.all(promises)
       setOffers(offersData.offers || [])
       setMyListings(listingsData.listings || [])
+      if (reviewsData) setBrandReviews(reviewsData.reviews || [])
     } catch (err) {
       setError('Failed to load dashboard')
     } finally {
@@ -243,6 +246,24 @@ export default function DashboardPage() {
 
           {/* Right sidebar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Brand eligibility reviews — suppliers only */}
+            {profile?.role === 'supplier' && brandReviews.filter(r => r.status === 'pending').length > 0 && (
+              <div className="card" style={{ borderColor: 'var(--amber)', border: '1.5px solid var(--amber)' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 4 }}>
+                  Brand eligibility reviews
+                  <span style={{ marginLeft: 8, background: 'var(--amber)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
+                    {brandReviews.filter(r => r.status === 'pending').length}
+                  </span>
+                </h3>
+                <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
+                  An admin has requested your input on a new member's brand eligibility.
+                </p>
+                {brandReviews.filter(r => r.status === 'pending').map(review => (
+                  <BrandReviewCard key={review.id} review={review} onRespond={loadAll} />
+                ))}
+              </div>
+            )}
 
             {/* Quick actions */}
             <div className="card">
@@ -498,6 +519,84 @@ function OfferCard({ offer, profile, actionLoading, checkoutLoading, counterForm
             </form>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Brand Review Card (supplier only) ────────────────────────
+function BrandReviewCard({ review, onRespond }) {
+  const [notes, setNotes] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [responded, setResponded] = useState(false)
+
+  async function respond(decision) {
+    setLoading(true)
+    try {
+      await api.respondToBrandReview(review.id, { decision, notes })
+      setResponded(true)
+      onRespond()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (responded) {
+    return (
+      <div style={{ padding: '12px 14px', background: 'var(--green-bg)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--green)', marginBottom: 10 }}>
+        ✓ Response submitted — admin has been notified
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', marginBottom: 10 }}>
+      <div style={{ padding: '12px 14px', background: 'var(--surface)' }}>
+        <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 4 }}>
+          Brand: <span style={{ color: 'var(--gold)' }}>{review.brand?.name}</span>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+          Applicant role: <span style={{ textTransform: 'capitalize' }}>{review.applicant?.role}</span>
+          {' · '}Requested {new Date(review.requested_at).toLocaleDateString('en-GB')}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+          Expires: {new Date(review.expires_at).toLocaleDateString('en-GB')}
+        </div>
+      </div>
+      <div style={{ padding: '12px 14px' }}>
+        <div className="form-group" style={{ marginBottom: 10 }}>
+          <label className="form-label">Your notes (optional)</label>
+          <textarea
+            className="form-input" rows={2}
+            value={notes} onChange={e => setNotes(e.target.value)}
+            maxLength={500}
+            placeholder="Any notes for the admin about this applicant's eligibility…"
+            style={{ resize: 'none' }}
+          />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button
+            className="btn btn-outline btn-sm"
+            style={{ justifyContent: 'center', borderColor: 'var(--green)', color: 'var(--green)' }}
+            onClick={() => respond('approved')}
+            disabled={loading}
+          >
+            ✓ Recommend approval
+          </button>
+          <button
+            className="btn btn-danger btn-sm"
+            style={{ justifyContent: 'center' }}
+            onClick={() => respond('declined')}
+            disabled={loading}
+          >
+            ✗ Recommend decline
+          </button>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
+          Your response is advisory — the final decision rests with the platform admin.
+        </p>
       </div>
     </div>
   )
