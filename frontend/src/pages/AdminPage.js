@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 
 function formatPrice(pence) {
@@ -6,6 +7,7 @@ function formatPrice(pence) {
 }
 
 export default function AdminPage() {
+  const navigate = useNavigate()
   const [tab, setTab] = useState('pending')
   const [pendingUsers, setPendingUsers] = useState([])
   const [allUsers, setAllUsers] = useState([])
@@ -249,18 +251,18 @@ export default function AdminPage() {
         {tab === 'allusers' && (
           allUsers.length === 0
             ? <div className="empty-state"><h3>No users yet</h3></div>
-            : <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            : <div className="card table-scroll" style={{ padding: 0, overflow: 'hidden' }}>
                 <table className="table">
-                  <thead><tr><th>Company</th><th>Contact</th><th>Role</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+                  <thead><tr><th>Company</th><th className="hide-mobile">Contact</th><th>Role</th><th>Status</th><th className="hide-mobile">Joined</th><th></th></tr></thead>
                   <tbody>
                     {allUsers.map(u => (
-                      <tr key={u.id}>
+                      <tr key={u.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/admin/users/${u.id}`)}>
                         <td><div style={{ fontWeight: 500 }}>{u.company_name}</div><div style={{ fontSize: 12, color: 'var(--muted)' }}>{u.email}</div></td>
-                        <td style={{ fontSize: 13 }}>{u.contact_name}</td>
+                        <td className="hide-mobile" style={{ fontSize: 13 }}>{u.contact_name}</td>
                         <td><span className="badge badge-draft" style={{ textTransform: 'capitalize' }}>{u.role}</span></td>
                         <td><span className={`badge badge-${u.status}`}>{u.status}</span></td>
-                        <td style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(u.created_at).toLocaleDateString('en-GB')}</td>
-                        <td><button className="btn btn-outline btn-sm" onClick={() => openUserPermissions(u)}>Manage →</button></td>
+                        <td className="hide-mobile" style={{ color: 'var(--muted)', fontSize: 13 }}>{new Date(u.created_at).toLocaleDateString('en-GB')}</td>
+                        <td style={{ color: 'var(--navy)', fontSize: 13, fontWeight: 500 }}>Manage →</td>
                       </tr>
                     ))}
                   </tbody>
