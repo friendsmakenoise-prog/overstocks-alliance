@@ -206,7 +206,7 @@ export default function AdminDashboardPage() {
                     </span>
                   )}
                 </h2>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=pending')}>
                   View all →
                 </button>
               </div>
@@ -259,7 +259,7 @@ export default function AdminDashboardPage() {
                     </span>
                   )}
                 </h2>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=pending')}>
                   View all →
                 </button>
               </div>
@@ -316,7 +316,7 @@ export default function AdminDashboardPage() {
                     </span>
                   )}
                 </h2>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=pending')}>
                   View all →
                 </button>
               </div>
