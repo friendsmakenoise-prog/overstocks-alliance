@@ -13,13 +13,18 @@ export default function ListingsPage() {
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [showAll, setShowAll] = useState(false)
+  const [showAllState, setShowAllState] = useState(false)
+  const showAll = canShowAll && showAllState
   const [filters, setFilters] = useState({ brand_id: '', min_price: '', max_price: '' })
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
   const [applying, setApplying] = useState({}) // { [brandId]: 'loading' | 'applied' }
 
   const approvedBrands = profile?.approvedBrands || []
+  const isSupplier = profile?.role === 'supplier'
+
+  // Suppliers never see show-all — they only see their registered brands
+  const canShowAll = !isSupplier
 
   // When showAll toggles, reload with appropriate endpoint
   useEffect(() => { loadListings() }, [filters, showAll])
@@ -99,14 +104,16 @@ export default function ListingsPage() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* Show all toggle */}
-            <button
-              className={`btn btn-sm ${showAll ? 'btn-primary' : 'btn-outline'}`}
-              onClick={() => { setShowAll(v => !v); setFilters({ brand_id: '', min_price: '', max_price: '' }) }}
-            >
-              {showAll ? '👁 Showing all brands' : '👁 Show all brands'}
-            </button>
-            {profile?.role === 'supplier' && (
+            {/* Show all toggle — retailers only, not suppliers */}
+            {canShowAll && (
+              <button
+                className={`btn btn-sm ${showAll ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => { setShowAllState(v => !v); setFilters({ brand_id: '', min_price: '', max_price: '' }) }}
+              >
+                {showAll ? '👁 Showing all brands' : '👁 Show all brands'}
+              </button>
+            )}
+            {isSupplier && (
               <button className="btn btn-primary" onClick={() => navigate('/listings/new')}>
                 + New listing
               </button>
