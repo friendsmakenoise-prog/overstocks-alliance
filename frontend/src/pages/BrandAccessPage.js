@@ -197,7 +197,7 @@ export default function BrandAccessPage() {
               color: 'var(--amber)',
               lineHeight: 1.6
             }}>
-              <strong>If your brand uses dealership tiers</strong> — for example Gold, Platinum, or Premier dealer levels — register each tier as a separate entry using the "My brand isn't listed" field below (e.g. "Roland Gold", "Roland Platinum"). This allows us to match retailers to the correct product access level during review.
+              <strong>If your brand uses dealership tiers</strong> — for example Gold, Platinum, or Premier dealer levels — register each tier as a separate entry using the "My brand isn't listed" field below. This allows us to match retailers to the correct product access level during review.
             </div>
           )}
 
