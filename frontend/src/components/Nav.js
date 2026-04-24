@@ -61,7 +61,8 @@ export default function Nav() {
   // Build nav links based on role
   const navLinks = !user || !profile ? [] : isAdmin ? [
     { to: '/', label: 'Dashboard', badge: urgentCount },
-    { to: '/admin', label: 'Users & listings' },
+    { to: '/admin', label: 'Users & brands' },
+    { to: '/admin/listings', label: 'Listings & orders' },
     { to: '/admin/brand-applications', label: 'Brand applications' },
     { to: '/admin/finance', label: 'Finance' },
   ] : [
