@@ -152,6 +152,25 @@ export default function AdminUserPage() {
       await supabase.from('supplier_brand_distributions')
         .upsert({ supplier_id: id, brand_id: brandId, is_other: false, verified: true }, { onConflict: 'supplier_id,brand_id', ignoreDuplicates: true })
 
+      // Also grant brand_permission so supplier can see listings for this brand on Browse
+      const { data: existingPerm } = await supabase
+        .from('brand_permissions')
+        .select('id, revoked_at')
+        .eq('user_id', id)
+        .eq('brand_id', brandId)
+        .single()
+
+      if (existingPerm && existingPerm.revoked_at) {
+        // Re-activate a previously revoked permission
+        await supabase.from('brand_permissions')
+          .update({ revoked_at: null })
+          .eq('id', existingPerm.id)
+      } else if (!existingPerm) {
+        // Grant fresh permission
+        await supabase.from('brand_permissions')
+          .insert({ user_id: id, brand_id: brandId })
+      }
+
       setSuccess(`Brand approved and added to platform`)
       setApprovingBrand(null)
       setNewBrandName('')
