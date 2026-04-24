@@ -44,6 +44,11 @@ export const api = {
     const qs = new URLSearchParams(params).toString()
     return apiRequest('GET', `/api/listings${qs ? '?' + qs : ''}`)
   },
+  getAllListings: (params = {}) => {
+    const qs = new URLSearchParams(params).toString()
+    return apiRequest('GET', `/api/listings/all${qs ? '?' + qs : ''}`)
+  },
+  applyForBrand:  (brandId) => apiRequest('POST', '/api/listings/apply-brand', { brandId }),
   getListing:    (id)    => apiRequest('GET', `/api/listings/${id}`),
   createListing: (data)  => apiRequest('POST', '/api/listings', data),
   reportListing: (id, reason) => apiRequest('POST', `/api/listings/${id}/report`, { reason }),
