@@ -13,9 +13,118 @@ const xss = require('xss')
 // ============================================================
 
 /**
- * GET /api/listings
- * Returns listings for the user's approved brands only.
+ * GET /api/listings/all
+ * Returns ALL active listings with an `authorised` flag per listing.
+ * Used for the "show all" toggle — ungated listings are visible but
+ * the buy/offer button is disabled on the frontend.
  */
+router.get('/all', requireAuth, async (req, res) => {
+  try {
+    const approvedBrandIds = await getUserApprovedBrandIds(req.user.id)
+
+    // Get pending/reviewing application brand IDs too
+    const { data: pendingApps } = await supabaseAdmin
+      .from('brand_applications')
+      .select('brand_id')
+      .eq('user_id', req.user.id)
+      .in('status', ['pending', 'reviewing'])
+
+    const pendingBrandIds = (pendingApps || []).map(a => a.brand_id).filter(Boolean)
+
+    let query = supabaseAdmin
+      .from('listings')
+      .select(`
+        id, title, description, price_pence, quantity,
+        shipping_mode, shipping_cost_pence, image_urls,
+        status, created_at, brand_id,
+        brands ( id, name, slug )
+      `)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+
+    if (req.query.min_price) query = query.gte('price_pence', parseInt(req.query.min_price) * 100)
+    if (req.query.max_price) query = query.lte('price_pence', parseInt(req.query.max_price) * 100)
+
+    const { data: listings, error } = await query
+    if (error) throw error
+
+    // Tag each listing with authorisation status
+    const tagged = (listings || []).map(l => ({
+      ...l,
+      authorised: approvedBrandIds.includes(l.brand_id),
+      applied:    pendingBrandIds.includes(l.brand_id)
+    }))
+
+    res.json({ listings: tagged, approvedBrandIds, pendingBrandIds })
+  } catch (err) {
+    console.error('Get all listings error:', err)
+    res.status(500).json({ error: 'Failed to fetch listings' })
+  }
+})
+
+/**
+ * POST /api/listings/apply-brand
+ * Quick inline brand application from a listing card.
+ */
+router.post('/apply-brand', requireAuth, async (req, res) => {
+  try {
+    const { brandId } = req.body
+    if (!brandId) return res.status(400).json({ error: 'brandId required' })
+
+    // Check brand exists
+    const { data: brand } = await supabaseAdmin
+      .from('brands')
+      .select('id, name')
+      .eq('id', brandId)
+      .single()
+
+    if (!brand) return res.status(404).json({ error: 'Brand not found' })
+
+    // Check not already applied or approved
+    const { data: existing } = await supabaseAdmin
+      .from('brand_applications')
+      .select('id, status')
+      .eq('user_id', req.user.id)
+      .eq('brand_id', brandId)
+      .in('status', ['pending', 'reviewing', 'approved'])
+      .single()
+
+    if (existing) {
+      const msg = existing.status === 'approved'
+        ? 'You already have access to this brand'
+        : 'You already have a pending application for this brand'
+      return res.status(409).json({ error: msg })
+    }
+
+    // Check brand permissions too
+    const { data: permission } = await supabaseAdmin
+      .from('brand_permissions')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .eq('brand_id', brandId)
+      .is('revoked_at', null)
+      .single()
+
+    if (permission) return res.status(409).json({ error: 'You already have access to this brand' })
+
+    // Create the application
+    await supabaseAdmin
+      .from('brand_applications')
+      .insert({
+        user_id: req.user.id,
+        brand_id: brandId,
+        is_other: false,
+        status: 'pending'
+      })
+
+    res.json({ message: `Application submitted for ${brand.name}` })
+  } catch (err) {
+    console.error('Apply brand error:', err)
+    res.status(500).json({ error: 'Failed to submit application' })
+  }
+})
+
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     // Step 1: Get this user's approved brand IDs
