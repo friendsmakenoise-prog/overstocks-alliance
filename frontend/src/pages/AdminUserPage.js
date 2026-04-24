@@ -510,7 +510,7 @@ export default function AdminUserPage() {
                 const actions = getListingActions(listing.status)
                 return (
                   <div key={listing.id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '56px 1fr auto', gap: 0 }}>
+                    <div className="listing-card-row-sm">
                       <div style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 56 }}>
                         {listing.image_urls?.length > 0 ? (
                           <img src={listing.image_urls[0]} alt="" style={{ width: '100%', height: 56, objectFit: 'cover' }} />
@@ -531,7 +531,7 @@ export default function AdminUserPage() {
                         </div>
                       </div>
                       {actions.length > 0 && (
-                        <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center', borderLeft: '1px solid var(--border)', minWidth: 110 }}>
+                        <div className="listing-card-actions-col">
                           {actions.map(action => {
                             const cfg = LISTING_ACTION_CONFIG[action]
                             return (
