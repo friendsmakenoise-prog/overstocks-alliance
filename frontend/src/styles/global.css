@@ -640,3 +640,165 @@ img { max-width: 100%; display: block; }
 .mt-md        { margin-top: var(--space-md); }
 .mb-md        { margin-bottom: var(--space-md); }
 .mb-lg        { margin-bottom: var(--space-lg); }
+
+/* ============================================================
+   MOBILE FIXES — POST-FEATURE BUILD PASS
+   Fixes for AdminListingsPage, AdminUserPage, BrandAccessPage,
+   ProfilePage, AdminBrandApplicationsPage, modals
+   ============================================================ */
+
+/* ── Listing card rows (admin) ───────────────────────────── */
+/* On mobile, stack the action buttons below the info row */
+.listing-card-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 0;
+}
+.listing-card-row-sm {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 0;
+}
+
+@media (max-width: 600px) {
+  .listing-card-row,
+  .listing-card-row-sm {
+    grid-template-columns: 48px 1fr !important;
+  }
+  /* Action column drops below on mobile */
+  .listing-card-actions-col {
+    grid-column: 1 / -1;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border);
+    min-width: unset !important;
+  }
+  .listing-card-actions-col .btn {
+    flex: 1 1 auto;
+    min-width: 80px;
+  }
+
+  /* Admin brand application cards */
+  .app-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .app-card-header .badge-group {
+    order: -1;
+  }
+
+  /* Brand access grid — tighter on phone */
+  .brand-access-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    max-height: 280px !important;
+  }
+
+  /* Modal scrolling on short screens */
+  .modal-card {
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  /* Profile page — stack account detail cards */
+  .profile-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Admin user page — quick stats wrap */
+  .user-stats-row {
+    flex-wrap: wrap;
+  }
+  .user-stats-row > div {
+    flex: 1 1 80px;
+  }
+
+  /* Filter bars — stack vertically */
+  .filter-bar {
+    flex-direction: column;
+  }
+  .filter-bar .form-input,
+  .filter-bar select {
+    flex: 1 1 100% !important;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Listing cards — even smaller thumbnail */
+  .listing-card-row .thumb,
+  .listing-card-row-sm .thumb {
+    width: 44px !important;
+  }
+
+  /* Tabs — scrollable on phone */
+  .tab-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    padding-bottom: 1px;
+  }
+  .tab-row button {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Brand application expand header */
+  .app-expand-header {
+    grid-template-columns: 1fr !important;
+  }
+  .app-expand-header .expand-arrow {
+    display: none;
+  }
+}
+
+/* ── Modals — always scrollable, never clip on short screens ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11,22,40,0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 300;
+  padding: 20px;
+  overflow-y: auto;
+}
+@media (min-height: 600px) {
+  .modal-overlay { align-items: center; }
+}
+
+/* ── Nav pill — never overflow on small screens ── */
+.nav-handle {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Search filter bar responsive ── */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Tab rows ── */
+.tab-row {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Brand access grid */
+.brand-access-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  max-height: 360px;
+}
