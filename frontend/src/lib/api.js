@@ -81,6 +81,7 @@ export const api = {
     getSuppliersForBrand: (brandId) => apiRequest('GET', `/api/brand-reviews/admin/suppliers-for-brand/${brandId}`),
     getUser:       (id)            => apiRequest('GET', `/api/admin/users/${id}`),
     getUsers:      (params = {}) => apiRequest('GET', '/api/admin/users?' + new URLSearchParams(params)),
+    resolveReport: (id)            => apiRequest('POST', `/api/admin/reports/${id}/resolve`),
     approveUser:   (id)          => apiRequest('POST', `/api/admin/users/${id}/approve`),
     rejectUser:    (id, reason)  => apiRequest('POST', `/api/admin/users/${id}/reject`, { reason }),
     suspendUser:   (id)          => apiRequest('POST', `/api/admin/users/${id}/suspend`),
