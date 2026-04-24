@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 
 function formatPrice(pence) {
@@ -8,7 +8,8 @@ function formatPrice(pence) {
 
 export default function AdminPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState('pending')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState(searchParams.get('tab') || 'pending')
   const [pendingUsers, setPendingUsers] = useState([])
   const [allUsers, setAllUsers] = useState([])
   const [brands, setBrands] = useState([])
@@ -627,21 +628,66 @@ export default function AdminPage() {
         {tab === 'reports' && (
           reports.length === 0
             ? <div className="empty-state"><h3>No open reports</h3></div>
-            : <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <table className="table">
-                  <thead><tr><th>Listing</th><th>Brand</th><th>Reason</th><th>Reported by</th><th>Date</th></tr></thead>
-                  <tbody>
-                    {reports.map(r => (
-                      <tr key={r.id}>
-                        <td style={{ fontWeight: 500 }}>{r.listing?.title}</td>
-                        <td>{r.listing?.brands?.name}</td>
-                        <td style={{ maxWidth: 200, color: 'var(--slate)' }}>{r.reason}</td>
-                        <td style={{ fontSize: 12, color: 'var(--muted)' }}>{r.reporter?.anonymous_handle}</td>
-                        <td style={{ fontSize: 13, color: 'var(--muted)' }}>{new Date(r.created_at).toLocaleDateString('en-GB')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            : <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {reports.map(r => (
+                  <div key={r.id} className="card" style={{ borderLeft: '3px solid var(--red)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 500, fontSize: 14 }}>{r.listing?.title}</span>
+                          <span className="badge badge-draft">{r.listing?.brands?.name}</span>
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--slate)', marginBottom: 6, padding: '8px 12px', background: 'var(--red-bg)', borderRadius: 'var(--radius)' }}>
+                          <strong>Reason:</strong> {r.reason}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                          <span>Reported by {r.reporter?.anonymous_handle}</span>
+                          <span>{new Date(r.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 140 }}>
+                        {/* View listing */}
+                        {r.listing?.id && (
+                          <button
+                            className="btn btn-outline btn-sm"
+                            style={{ justifyContent: 'center' }}
+                            onClick={() => navigate(`/listings/${r.listing.id}`)}
+                          >
+                            View listing →
+                          </button>
+                        )}
+                        {/* Remove listing */}
+                        <button
+                          className="btn btn-danger btn-sm"
+                          style={{ justifyContent: 'center' }}
+                          onClick={async () => {
+                            if (!window.confirm(`Remove listing "${r.listing?.title}"? This cannot be undone.`)) return
+                            try {
+                              await api.admin.removeListing(r.listing.id, `Removed following report: ${r.reason}`)
+                              await api.admin.resolveReport(r.id)
+                              setReports(prev => prev.filter(x => x.id !== r.id))
+                            } catch (err) { setError(err.message) }
+                          }}
+                        >
+                          Remove listing
+                        </button>
+                        {/* Dismiss report */}
+                        <button
+                          className="btn btn-outline btn-sm"
+                          style={{ justifyContent: 'center', borderColor: 'var(--green)', color: 'var(--green)' }}
+                          onClick={async () => {
+                            try {
+                              await api.admin.resolveReport(r.id)
+                              setReports(prev => prev.filter(x => x.id !== r.id))
+                            } catch (err) { setError(err.message) }
+                          }}
+                        >
+                          ✓ Dismiss report
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
         )}
 
