@@ -14,17 +14,17 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAllState, setShowAllState] = useState(false)
-  const showAll = canShowAll && showAllState
   const [filters, setFilters] = useState({ brand_id: '', min_price: '', max_price: '' })
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
-  const [applying, setApplying] = useState({}) // { [brandId]: 'loading' | 'applied' }
+  const [applying, setApplying] = useState({})
 
   const approvedBrands = profile?.approvedBrands || []
   const isSupplier = profile?.role === 'supplier'
 
   // Suppliers never see show-all — they only see their registered brands
   const canShowAll = !isSupplier
+  const showAll = canShowAll && showAllState
 
   // When showAll toggles, reload with appropriate endpoint
   useEffect(() => { loadListings() }, [filters, showAll])
@@ -99,7 +99,9 @@ export default function ListingsPage() {
             <p style={{ color: 'var(--slate)', fontSize: 14 }}>
               {showAll
                 ? `Showing all listings — ${authorisedCount} available to you`
-                : `Showing listings for your ${approvedBrands.length} approved brand${approvedBrands.length !== 1 ? 's' : ''}`
+                : isSupplier
+                  ? `Stock from your ${approvedBrands.length} registered brand${approvedBrands.length !== 1 ? 's' : ''}`
+                  : `Showing listings for your ${approvedBrands.length} approved brand${approvedBrands.length !== 1 ? 's' : ''}`
               }
             </p>
           </div>
@@ -200,18 +202,46 @@ export default function ListingsPage() {
         {/* Empty states */}
         {!loading && approvedBrands.length === 0 && !showAll && (
           <div className="empty-state">
-            <h3>No brands assigned yet</h3>
-            <p>Your account is approved but you haven't been assigned any brands yet.</p>
-            <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/settings/brands')}>
-              Apply for brand access
-            </button>
+            {isSupplier ? (
+              <>
+                <h3>No brands registered yet</h3>
+                <p>You haven't been approved for any brands yet.<br />
+                  Once approved, you'll see listings from your registered brands here.
+                </p>
+                <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/settings/brands')}>
+                  Submit brand applications
+                </button>
+              </>
+            ) : (
+              <>
+                <h3>No brands assigned yet</h3>
+                <p>Your account is approved but you haven't been assigned any brands yet.</p>
+                <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/settings/brands')}>
+                  Apply for brand access
+                </button>
+              </>
+            )}
           </div>
         )}
 
-        {!loading && listings.length === 0 && (approvedBrands.length > 0 || showAll) && (
+        {!loading && listings.length === 0 && approvedBrands.length > 0 && !showAll && (
           <div className="empty-state">
             <h3>No listings found</h3>
-            <p>There are no active listings matching your filters right now.</p>
+            <p>There are no active listings for your brands right now.<br />
+              {isSupplier ? 'Why not add some stock?' : 'Check back soon or adjust your filters.'}
+            </p>
+            {isSupplier && (
+              <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => navigate('/listings/new')}>
+                + Add a listing
+              </button>
+            )}
+          </div>
+        )}
+
+        {!loading && showAll && listings.length === 0 && (
+          <div className="empty-state">
+            <h3>No listings on the platform yet</h3>
+            <p>Be the first to list some stock.</p>
           </div>
         )}
 
