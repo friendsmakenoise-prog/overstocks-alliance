@@ -219,15 +219,7 @@ export default function BrandAccessPage() {
                 No brands match "{search}"
               </p>
             ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                gap: 8,
-                marginBottom: 16,
-                maxHeight: 360,
-                overflowY: 'auto',
-                padding: '2px 0'
-              }}>
+              <div className="brand-access-grid" style={{ display: 'grid', gap: 8, marginBottom: 16, overflowY: 'auto', padding: '2px 0' }}>
                 {filteredBrands.map(brand => {
                   const status = getBrandStatus(brand.id)
                   const isSelected = selectedBrands.includes(brand.id)
