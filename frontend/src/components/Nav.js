@@ -104,7 +104,7 @@ export default function Nav() {
             {user && profile && (
               <>
                 <Link to="/profile" className="nav-handle" title="Edit profile">
-                  {profile.anonymous_handle}
+                  {profile.role === 'supplier' ? 'Supplier' : profile.role === 'retailer' ? 'Retailer' : profile.role === 'admin' ? 'Admin' : 'Account'} ↗
                 </Link>
                 <button onClick={handleSignOut} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   Sign out
@@ -152,7 +152,7 @@ export default function Nav() {
             {profile && (
               <div className="nav-mobile-handle">
                 <Link to="/profile" style={{ color: 'var(--gold-light)', textDecoration: 'none' }}>
-                  {profile.anonymous_handle} — Edit profile
+                  {profile.role === 'supplier' ? 'Supplier' : profile.role === 'retailer' ? 'Retailer' : 'Admin'} account — Edit profile
                 </Link>
               </div>
             )}
