@@ -103,7 +103,9 @@ export default function Nav() {
             ))}
             {user && profile && (
               <>
-                <span className="nav-handle">{profile.anonymous_handle}</span>
+                <Link to="/profile" className="nav-handle" title="Edit profile">
+                  {profile.anonymous_handle}
+                </Link>
                 <button onClick={handleSignOut} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                   Sign out
                 </button>
@@ -149,7 +151,9 @@ export default function Nav() {
             ))}
             {profile && (
               <div className="nav-mobile-handle">
-                Signed in as {profile.anonymous_handle}
+                <Link to="/profile" style={{ color: 'var(--gold-light)', textDecoration: 'none' }}>
+                  {profile.anonymous_handle} — Edit profile
+                </Link>
               </div>
             )}
             <button
