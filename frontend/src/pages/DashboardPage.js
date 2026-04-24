@@ -283,6 +283,11 @@ export default function DashboardPage() {
                   </button>
                 )}
                 {(profile?.role === 'supplier' || profile?.role === 'retailer') && (
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/profile')}>
+                    My profile <span>→</span>
+                  </button>
+                )}
+                {(profile?.role === 'supplier' || profile?.role === 'retailer') && (
                   <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/payments')}>
                     Payment settings <span>→</span>
                   </button>
