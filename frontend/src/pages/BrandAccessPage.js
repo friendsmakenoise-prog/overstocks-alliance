@@ -132,6 +132,10 @@ export default function BrandAccessPage() {
     !search || b.name.toLowerCase().includes(search.toLowerCase())
   )
 
+  // When searching, show ALL matching brands (approved, pending, available)
+  // When not searching, only show available brands in the grid
+  const gridBrands = search ? filteredBrands : brandGroups.available
+
   // Split into: already have access, applied/pending, available to apply
   const brandGroups = {
     approved:  filteredBrands.filter(b => myPermissions.includes(b.id)),
@@ -207,20 +211,29 @@ export default function BrandAccessPage() {
               <input
                 className="form-input"
                 type="search"
-                placeholder="Search brands…"
+                placeholder={`Search all ${activeBrands.length} brands on the platform…`}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+              {search && filteredBrands.length > 0 && (
+                <span className="form-hint">
+                  {filteredBrands.length} brand{filteredBrands.length !== 1 ? 's' : ''} found — tick to apply for ones you don't have yet
+                </span>
+              )}
             </div>
 
             {/* Brand grid */}
-            {filteredBrands.length === 0 ? (
+            {gridBrands.length === 0 && search ? (
+              <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+                No brands match "{search}" — use the "My brand isn't listed" field below.
+              </div>
+            ) : gridBrands.length === 0 && !search ? (
               <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-                No brands match "{search}"
+                You've applied for all brands currently on the platform. Use the field below if your brand isn't listed.
               </p>
             ) : (
               <div className="brand-access-grid" style={{ display: 'grid', gap: 8, marginBottom: 16, overflowY: 'auto', padding: '2px 0' }}>
-                {filteredBrands.map(brand => {
+                {gridBrands.map(brand => {
                   const status = getBrandStatus(brand.id)
                   const isSelected = selectedBrands.includes(brand.id)
                   const isDisabled = status === 'approved' || status === 'pending' || status === 'reviewing'
@@ -228,18 +241,13 @@ export default function BrandAccessPage() {
 
                   return (
                     <label key={brand.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '9px 12px',
-                      border: '1.5px solid',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '9px 12px', border: '1.5px solid',
                       borderColor: isSelected ? 'var(--navy)' : status === 'approved' ? 'var(--green)' : status === 'pending' || status === 'reviewing' ? 'var(--amber)' : 'var(--border)',
                       borderRadius: 'var(--radius)',
                       cursor: isDisabled ? 'default' : 'pointer',
                       background: isSelected ? 'var(--surface)' : status === 'approved' ? 'var(--green-bg)' : status === 'pending' || status === 'reviewing' ? 'var(--amber-bg)' : 'var(--white)',
-                      opacity: isDisabled && !status ? 0.5 : 1,
-                      transition: 'all 0.12s',
-                      fontSize: 13
+                      transition: 'all 0.12s', fontSize: 13
                     }}>
                       {!isDisabled ? (
                         <input
@@ -254,9 +262,7 @@ export default function BrandAccessPage() {
                       <span style={{
                         fontWeight: 500,
                         color: status === 'approved' ? 'var(--green)' : status === 'pending' || status === 'reviewing' ? 'var(--amber)' : 'var(--navy)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                       }}>
                         {brand.name}
                       </span>
