@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
                         <button className="btn btn-outline btn-sm" onClick={() => quickApproveUser(user.id)}>
                           Approve
                         </button>
-                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=pending')}>
                           Review →
                         </button>
                       </div>
@@ -241,7 +241,7 @@ export default function AdminDashboardPage() {
                   ))}
                   {pendingUsers.length > 5 && (
                     <div style={{ padding: '10px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
-                      +{pendingUsers.length - 5} more — <button onClick={() => navigate('/admin')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
+                      +{pendingUsers.length - 5} more — <button onClick={() => navigate('/admin?tab=listings')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
                     </div>
                   )}
                 </div>
@@ -259,7 +259,7 @@ export default function AdminDashboardPage() {
                     </span>
                   )}
                 </h2>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=pending')}>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=listings')}>
                   View all →
                 </button>
               </div>
@@ -286,7 +286,7 @@ export default function AdminDashboardPage() {
                         <button className="btn btn-outline btn-sm" onClick={() => quickApproveListing(listing.id)}>
                           Approve
                         </button>
-                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin')}>
+                        <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=listings')}>
                           Review →
                         </button>
                       </div>
@@ -294,7 +294,7 @@ export default function AdminDashboardPage() {
                   ))}
                   {pendingListings.length > 5 && (
                     <div style={{ padding: '10px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
-                      +{pendingListings.length - 5} more — <button onClick={() => navigate('/admin')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
+                      +{pendingListings.length - 5} more — <button onClick={() => navigate('/admin?tab=listings')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
                     </div>
                   )}
                 </div>
@@ -316,7 +316,7 @@ export default function AdminDashboardPage() {
                     </span>
                   )}
                 </h2>
-                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=pending')}>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin?tab=reports')}>
                   View all →
                 </button>
               </div>
@@ -390,7 +390,7 @@ export default function AdminDashboardPage() {
               <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 14 }}>Quick links</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { label: 'Manage users & brands', path: '/admin' },
+                  { label: 'Control panel', path: '/admin' },
                   { label: 'Listings & orders', path: '/admin/listings' },
                   { label: 'Brand applications', path: '/admin/brand-applications' },
                   { label: 'Finance & fee settings', path: '/admin/finance' },
