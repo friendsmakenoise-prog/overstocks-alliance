@@ -132,11 +132,7 @@ export default function BrandAccessPage() {
     !search || b.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  // When searching, show ALL matching brands (approved, pending, available)
-  // When not searching, only show available brands in the grid
-  const gridBrands = search ? filteredBrands : brandGroups.available
-
-  // Split into: already have access, applied/pending, available to apply
+  // Split brands into groups
   const brandGroups = {
     approved:  filteredBrands.filter(b => myPermissions.includes(b.id)),
     pending:   filteredBrands.filter(b => !myPermissions.includes(b.id) && myApplications.some(a => a.brand_id === b.id && ['pending','reviewing'].includes(a.status))),
@@ -147,6 +143,9 @@ export default function BrandAccessPage() {
       return !app || app.status === 'declined'
     })
   }
+
+  // When searching show ALL matching brands; when not searching show only available ones
+  const gridBrands = search ? filteredBrands : brandGroups.available
 
   if (loading) return <div className="loading-page"><div className="spinner" /></div>
 
