@@ -464,4 +464,30 @@ router.get('/reports', async (req, res) => {
   }
 })
 
+/**
+ * POST /api/admin/reports/:id/resolve
+ * Mark a report as resolved (dismiss without action)
+ */
+router.post('/reports/:id/resolve', async (req, res) => {
+  try {
+    const { error } = await supabaseAdmin
+      .from('listing_reports')
+      .update({ resolved: true, resolved_at: new Date().toISOString(), resolved_by: req.user.id })
+      .eq('id', req.params.id)
+
+    if (error) throw error
+
+    await supabaseAdmin.from('audit_log').insert({
+      admin_id: req.user.id,
+      action: 'resolve_report',
+      target_type: 'listing_report',
+      target_id: req.params.id
+    })
+
+    res.json({ message: 'Report resolved' })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to resolve report' })
+  }
+})
+
 module.exports = router
