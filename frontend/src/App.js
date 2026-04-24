@@ -17,6 +17,7 @@ import OffersPage from './pages/OffersPage'
 import OrderPage from './pages/OrderPage'
 import PaymentSettingsPage from './pages/PaymentSettingsPage'
 import BrandAccessPage from './pages/BrandAccessPage'
+import ProfilePage from './pages/ProfilePage'
 import AdminPage from './pages/AdminPage'
 import AdminFinancePage from './pages/AdminFinancePage'
 import AdminBrandApplicationsPage from './pages/AdminBrandApplicationsPage'
@@ -99,6 +100,12 @@ function AppRoutes() {
       <Route path="/my-listings" element={
         <ProtectedRoute roles={['supplier', 'retailer']}>
           <Layout><MyListingsPage /></Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <Layout><ProfilePage /></Layout>
         </ProtectedRoute>
       } />
 
