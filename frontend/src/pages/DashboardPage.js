@@ -147,9 +147,12 @@ export default function DashboardPage() {
         {/* Summary cards */}
         <div className="stat-cards" style={{ marginBottom: 32 }}>
           {[
-            { label: 'Needs attention', value: needsAction.length, urgent: needsAction.length > 0, onClick: () => {} },
-            { label: 'Active offers',   value: activeOffers.length, onClick: () => {} },
-            { label: 'Completed orders',value: recentOrders.length, onClick: () => navigate('/offers') },
+            { label: 'Needs attention', value: needsAction.length, urgent: needsAction.length > 0,
+              onClick: () => document.getElementById('section-needs-attention')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+            { label: 'Active offers',   value: activeOffers.length,
+              onClick: () => document.getElementById('section-active-offers')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
+            { label: 'Completed orders',value: recentOrders.length,
+              onClick: () => document.getElementById('section-completed-orders')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) },
             { label: 'My listings',     value: myListings.length,   onClick: () => navigate('/my-listings') },
           ].map((card, i) => (
             <button key={i} onClick={card.onClick} style={{
@@ -176,7 +179,7 @@ export default function DashboardPage() {
 
             {/* Needs attention */}
             {needsAction.length > 0 && (
-              <section>
+              <section id="section-needs-attention">
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                   Needs your attention
                   <span style={{ background: 'var(--amber)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
@@ -207,7 +210,7 @@ export default function DashboardPage() {
 
             {/* Active offers — waiting on other party */}
             {activeOffers.length > 0 && (
-              <section>
+              <section id="section-active-offers">
                 <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 12, color: 'var(--slate)' }}>
                   Waiting on other party
                 </h2>
@@ -301,6 +304,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent orders */}
+            <div id="section-completed-orders" />
             {recentOrders.length > 0 && (
               <div className="card">
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 14 }}>Recent orders</h3>
