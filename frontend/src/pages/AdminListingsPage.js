@@ -239,7 +239,7 @@ export default function AdminListingsPage() {
         {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: '1px solid var(--border)', paddingBottom: 0 }}>
+        <div className="tab-row" style={{ marginBottom: 20 }}>
           {[
             { key: 'listings', label: `Listings (${listings.length})` },
             { key: 'orders',   label: `Orders (${orders.length})` },
@@ -257,7 +257,7 @@ export default function AdminListingsPage() {
         </div>
 
         {/* Search & filter bar */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+        <div className="filter-bar" style={{ marginBottom: 16 }}>
           <input
             className="form-input"
             style={{ flex: '1 1 200px', minWidth: 160 }}
@@ -298,7 +298,7 @@ export default function AdminListingsPage() {
                 <div key={listing.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
 
                   {/* Listing row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr auto', gap: 0 }}>
+                  <div className="listing-card-row">
 
                     {/* Thumbnail */}
                     <div style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64, cursor: 'pointer' }}
@@ -326,7 +326,7 @@ export default function AdminListingsPage() {
                     </div>
 
                     {/* Action buttons */}
-                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5, justifyContent: 'center', borderLeft: '1px solid var(--border)', minWidth: 120 }}>
+                    <div className="listing-card-actions-col">
                       <button className="btn btn-outline btn-sm" style={{ justifyContent: 'center', fontSize: 12 }}
                         onClick={() => isEditing ? setEditingId(null) : startEdit(listing)}>
                         {isEditing ? 'Cancel edit' : '✏️ Edit'}
