@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase'
 export default function SignupPage() {
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '',
-    role: 'retailer', companyName: '', contactName: '', phone: ''
+    role: 'retailer', companyName: '', contactName: '',
+    phone: '', website: '', tradingAddress: ''
   })
   const [activeBrands, setActiveBrands] = useState([])
   const [selectedBrands, setSelectedBrands] = useState([])    // UUIDs of selected active brands
@@ -65,6 +66,8 @@ export default function SignupPage() {
         companyName: form.companyName,
         contactName: form.contactName,
         phone: form.phone,
+        website: form.website,
+        tradingAddress: form.tradingAddress,
         selectedBrands,
         otherBrand: otherBrand.trim() || undefined
       })
@@ -172,6 +175,17 @@ export default function SignupPage() {
               <input className="form-input" type="tel" value={form.phone} onChange={set('phone')} placeholder="+44 7700 900000" />
             </div>
 
+            <div className="form-group">
+              <label className="form-label">Company website (optional)</label>
+              <input className="form-input" type="url" value={form.website} onChange={set('website')} placeholder="https://www.yourcompany.com" />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Trading address *</label>
+              <textarea className="form-input" rows={3} value={form.tradingAddress} onChange={set('tradingAddress')} placeholder="Registered trading address" required style={{ resize: 'none' }} />
+              <span className="form-hint">Used for verification purposes only — never shown to other users.</span>
+            </div>
+
             {/* Brand selection */}
             <div className="form-group">
               <label className="form-label">
@@ -196,7 +210,7 @@ export default function SignupPage() {
                   color: 'var(--amber)',
                   lineHeight: 1.6
                 }}>
-                  <strong>If your brand uses dealership tiers</strong> — for example Gold, Platinum, or Premier dealer levels — please register each tier as a separate brand entry using the "Other" field below (e.g. "Roland Gold", "Roland Platinum"). This allows us to match retailers to the correct product access level during review.
+                  <strong>If your brand uses dealership tiers</strong> — for example Gold, Platinum, or Premier dealer levels — please register each tier as a separate brand entry using the "Other" field below. This allows us to match retailers to the correct product access level during review.
                 </div>
               )}
 
