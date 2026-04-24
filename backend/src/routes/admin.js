@@ -24,8 +24,8 @@ router.get('/users', async (req, res) => {
       .from('user_profiles')
       .select(`
         id, email, role, status, company_name,
-        contact_name, phone, anonymous_handle,
-        created_at, approved_at, rejection_reason
+        contact_name, phone, website, trading_address,
+        anonymous_handle, created_at, approved_at, rejection_reason
       `)
       .order('created_at', { ascending: false })
 
@@ -52,8 +52,8 @@ router.get('/users/:id', async (req, res) => {
       .from('user_profiles')
       .select(`
         id, email, role, status, company_name,
-        contact_name, phone, anonymous_handle,
-        created_at, approved_at, rejection_reason
+        contact_name, phone, website, trading_address,
+        anonymous_handle, created_at, approved_at, rejection_reason
       `)
       .eq('id', req.params.id)
       .single()
