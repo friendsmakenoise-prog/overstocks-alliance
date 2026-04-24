@@ -18,7 +18,7 @@ const validator = require('validator')
  */
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, role, companyName, contactName, phone, selectedBrands, otherBrand } = req.body
+    const { email, password, role, companyName, contactName, phone, website, tradingAddress, selectedBrands, otherBrand } = req.body
 
     // --- Input validation ---
     if (!email || !password || !role || !companyName || !contactName) {
@@ -74,6 +74,8 @@ router.post('/signup', async (req, res) => {
         company_name: safeCompanyName,
         contact_name: safeContactName,
         phone: safePhone,
+        website: website ? website.trim().substring(0, 255) : null,
+        trading_address: tradingAddress ? tradingAddress.trim().substring(0, 500) : null,
         anonymous_handle: handle
       })
 
