@@ -25,11 +25,14 @@ export default function BrandAccessPage() {
     setLoading(true)
     try {
       const [brandsResp, appsResp, permsResp] = await Promise.all([
-        supabase.from('brands').select('id, name').eq('status', 'active').order('name'),
+        // Fetch ALL active brands via API (bypasses RLS which limits to user's brands)
+        fetch(`${process.env.REACT_APP_API_URL}/api/brands/public`, {
+          headers: { 'Content-Type': 'application/json' }
+        }).then(r => r.json()),
         supabase.from('brand_applications').select('id, brand_id, brand_name_text, is_other, status, applied_at').eq('user_id', profile.id).order('applied_at', { ascending: false }),
         supabase.from('brand_permissions').select('brand_id').eq('user_id', profile.id).is('revoked_at', null)
       ])
-      setActiveBrands(brandsResp.data || [])
+      setActiveBrands(brandsResp.brands || [])
       setMyApplications(appsResp.data || [])
       setMyPermissions((permsResp.data || []).map(p => p.brand_id))
     } catch (err) {
