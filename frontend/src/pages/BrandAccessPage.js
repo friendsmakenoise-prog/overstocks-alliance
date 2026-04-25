@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
 
 export default function BrandAccessPage() {
@@ -9,6 +10,8 @@ export default function BrandAccessPage() {
   const [activeBrands, setActiveBrands] = useState([])
   const [myApplications, setMyApplications] = useState([])
   const [myPermissions, setMyPermissions] = useState([])
+  const [retailers, setRetailers] = useState([])
+  const [showRetailers, setShowRetailers] = useState(false)
   const [selectedBrands, setSelectedBrands] = useState([])
   const [otherBrand, setOtherBrand] = useState('')
   const [showOther, setShowOther] = useState(false)
@@ -24,14 +27,24 @@ export default function BrandAccessPage() {
     if (!profile?.id) return
     setLoading(true)
     try {
-      const [brandsResp, appsResp, permsResp] = await Promise.all([
+      const promises = [
         supabase.from('brands').select('id, name').eq('status', 'active').order('name'),
         supabase.from('brand_applications').select('id, brand_id, brand_name_text, is_other, status, applied_at').eq('user_id', profile.id).order('applied_at', { ascending: false }),
         supabase.from('brand_permissions').select('brand_id').eq('user_id', profile.id).is('revoked_at', null)
-      ])
+      ]
+
+      const [brandsResp, appsResp, permsResp] = await Promise.all(promises)
       setActiveBrands(brandsResp.data || [])
       setMyApplications(appsResp.data || [])
       setMyPermissions((permsResp.data || []).map(p => p.brand_id))
+
+      // Load approved retailers for suppliers
+      if (profile.role === 'supplier') {
+        try {
+          const retailersData = await api.getMyRetailers()
+          setRetailers(retailersData.retailers || [])
+        } catch { /* silent — may have no distributions yet */ }
+      }
     } catch (err) {
       setError('Failed to load brand information')
     } finally {
@@ -178,7 +191,8 @@ export default function BrandAccessPage() {
         {/* Stat cards — role appropriate */}
         <div className="stat-cards" style={{ marginBottom: 24 }}>
           {(profile?.role === 'supplier' ? [
-            { label: 'Registered brands', value: myPermissions.length, highlight: true },
+            { label: 'Approved retailers', value: retailers.length, highlight: true,
+              onClick: () => setShowRetailers(v => !v), hint: 'Click to view' },
             { label: 'Pending review',    value: brandGroups.pending.length },
             { label: 'Declined',          value: brandGroups.declined.length },
           ] : [
@@ -186,12 +200,91 @@ export default function BrandAccessPage() {
             { label: 'Applications pending',  value: brandGroups.pending.length },
             { label: 'Available to apply',    value: brandGroups.available.length },
           ]).map((s, i) => (
-            <div key={i} className={`stat-card ${s.highlight ? 'highlight' : ''}`}>
+            <div key={i}
+              className={`stat-card ${s.highlight ? 'highlight' : ''}`}
+              onClick={s.onClick}
+              style={{ cursor: s.onClick ? 'pointer' : 'default' }}
+            >
               <div className="stat-card-value">{s.value}</div>
               <div className="stat-card-label">{s.label}</div>
+              {s.hint && <div style={{ fontSize: 11, color: 'var(--gold-light)', marginTop: 2 }}>{s.hint}</div>}
             </div>
           ))}
         </div>
+
+        {/* Approved retailers panel — supplier only */}
+        {profile?.role === 'supplier' && showRetailers && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+                Approved retailers
+              </h2>
+              <button className="btn btn-outline btn-sm" onClick={() => setShowRetailers(false)}>
+                Close ✕
+              </button>
+            </div>
+
+            <div className="alert alert-info" style={{ marginBottom: 16, fontSize: 13 }}>
+              This list is for account management purposes only. During trading, all parties remain anonymous.
+            </div>
+
+            {retailers.length === 0 ? (
+              <p style={{ fontSize: 13, color: 'var(--muted)' }}>
+                No retailers have been approved for your brands yet.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {retailers.map(retailer => (
+                  <div key={retailer.id} style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', padding: '12px 16px',
+                      background: 'var(--surface)', flexWrap: 'wrap', gap: 10
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: 14, marginBottom: 4 }}>
+                          {retailer.company_name}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                          {retailer.contact_name && <span>👤 {retailer.contact_name}</span>}
+                          {retailer.email && <span>📧 {retailer.email}</span>}
+                          {retailer.phone && <span>📞 {retailer.phone}</span>}
+                          {retailer.website && (
+                            <a href={retailer.website} target="_blank" rel="noopener noreferrer"
+                              style={{ color: 'var(--navy)' }}>
+                              🌐 Website
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: 'var(--green)', background: 'var(--green-bg)', padding: '2px 8px', borderRadius: 100, border: '1px solid var(--green)' }}>
+                          ✓ Approved {retailer.approved_at ? new Date(retailer.approved_at).toLocaleDateString('en-GB') : ''}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Brands they're approved for */}
+                    <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: 'var(--muted)', marginRight: 4 }}>Brands:</span>
+                      {retailer.brands.map(b => (
+                        <span key={b.id} style={{
+                          fontSize: 12, background: 'var(--surface)', color: 'var(--navy)',
+                          padding: '2px 8px', borderRadius: 100, border: '1px solid var(--border)'
+                        }}>
+                          {b.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Apply for new brands */}
         <div className="card" style={{ marginBottom: 24 }}>
