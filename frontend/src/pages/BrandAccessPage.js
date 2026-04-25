@@ -205,85 +205,53 @@ export default function BrandAccessPage() {
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* Brand search */}
-            <div className="form-group">
-              <input
-                className="form-input"
-                type="search"
-                placeholder={`Search all ${activeBrands.length} brands on the platform…`}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-              {search && filteredBrands.length > 0 && (
-                <span className="form-hint">
-                  {filteredBrands.length} brand{filteredBrands.length !== 1 ? 's' : ''} found — tick to apply for ones you don't have yet
-                </span>
-              )}
-            </div>
 
-            {/* Brand grid */}
-            {gridBrands.length === 0 && search ? (
-              <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-                No brands match "{search}" — use the "My brand isn't listed" field below.
-              </div>
-            ) : gridBrands.length === 0 && !search ? (
-              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-                You've applied for all brands currently on the platform. Use the field below if your brand isn't listed.
-              </p>
-            ) : (
-              <div className="brand-access-grid" style={{ display: 'grid', gap: 8, marginBottom: 16, overflowY: 'auto', padding: '2px 0' }}>
-                {gridBrands.map(brand => {
-                  const status = getBrandStatus(brand.id)
-                  const isSelected = selectedBrands.includes(brand.id)
-                  const isDisabled = status === 'approved' || status === 'pending' || status === 'reviewing'
-                  const sc = status ? STATUS_CONFIG[status] : null
+            {profile?.role === 'supplier' ? (
+              /* ── SUPPLIER VIEW — no platform browse, just their brands + Other field ── */
+              <>
+                {/* Their current registered brands */}
+                {brandGroups.approved.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label className="form-label">Your registered brands</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                      {brandGroups.approved.map(brand => (
+                        <div key={brand.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '8px 12px', background: 'var(--green-bg)',
+                          border: '1px solid var(--green)', borderRadius: 'var(--radius)',
+                          fontSize: 13
+                        }}>
+                          <span style={{ color: 'var(--green)' }}>✓</span>
+                          <span style={{ fontWeight: 500, color: 'var(--green)' }}>{brand.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                  return (
-                    <label key={brand.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '9px 12px', border: '1.5px solid',
-                      borderColor: isSelected ? 'var(--navy)' : status === 'approved' ? 'var(--green)' : status === 'pending' || status === 'reviewing' ? 'var(--amber)' : 'var(--border)',
-                      borderRadius: 'var(--radius)',
-                      cursor: isDisabled ? 'default' : 'pointer',
-                      background: isSelected ? 'var(--surface)' : status === 'approved' ? 'var(--green-bg)' : status === 'pending' || status === 'reviewing' ? 'var(--amber-bg)' : 'var(--white)',
-                      transition: 'all 0.12s', fontSize: 13
-                    }}>
-                      {!isDisabled ? (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleBrand(brand.id)}
-                          style={{ accentColor: 'var(--navy)', flexShrink: 0 }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: 11, flexShrink: 0 }}>{sc?.icon}</span>
-                      )}
-                      <span style={{
-                        fontWeight: 500,
-                        color: status === 'approved' ? 'var(--green)' : status === 'pending' || status === 'reviewing' ? 'var(--amber)' : 'var(--navy)',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }}>
-                        {brand.name}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
+                {/* Pending submissions */}
+                {brandGroups.pending.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <label className="form-label">Pending review</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                      {brandGroups.pending.map(brand => (
+                        <div key={brand.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '8px 12px', background: 'var(--amber-bg)',
+                          border: '1px solid var(--amber)', borderRadius: 'var(--radius)',
+                          fontSize: 13
+                        }}>
+                          <span style={{ color: 'var(--amber)' }}>⏳</span>
+                          <span style={{ fontWeight: 500, color: 'var(--amber)' }}>{brand.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Other brand */}
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 16 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: showOther ? 10 : 0 }}>
-                <input
-                  type="checkbox"
-                  checked={showOther}
-                  onChange={e => { setShowOther(e.target.checked); if (!e.target.checked) setOtherBrand('') }}
-                  style={{ accentColor: 'var(--navy)' }}
-                />
-                <span style={{ fontWeight: 500 }}>My brand isn't listed above</span>
-              </label>
-              {showOther && (
-                <div>
+                {/* Other field — always visible for suppliers, no checkbox needed */}
+                <div className="form-group">
+                  <label className="form-label">Add a brand or tier</label>
                   <input
                     className="form-input"
                     type="text"
@@ -293,11 +261,102 @@ export default function BrandAccessPage() {
                     maxLength={500}
                   />
                   <span className="form-hint">
-                    Unlisted brands will be reviewed by our team and may require additional verification.
+                    Include dealership tiers as separate entries (e.g. "Brand Gold, Brand Platinum"). These will be verified during review.
                   </span>
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              /* ── RETAILER VIEW — full search and grid ── */
+              <>
+                {/* Brand search */}
+                <div className="form-group">
+                  <input
+                    className="form-input"
+                    type="search"
+                    placeholder={`Search all ${activeBrands.length} brands on the platform…`}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                  />
+                  {search && filteredBrands.length > 0 && (
+                    <span className="form-hint">
+                      {filteredBrands.length} brand{filteredBrands.length !== 1 ? 's' : ''} found — tick to apply for ones you don't have yet
+                    </span>
+                  )}
+                </div>
+
+                {/* Brand grid */}
+                {gridBrands.length === 0 && search ? (
+                  <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+                    No brands match "{search}" — use the "My brand isn't listed" field below.
+                  </div>
+                ) : gridBrands.length === 0 && !search ? (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+                    You've applied for all brands currently on the platform. Use the field below if your brand isn't listed.
+                  </p>
+                ) : (
+                  <div className="brand-access-grid" style={{ display: 'grid', gap: 8, marginBottom: 16, overflowY: 'auto', padding: '2px 0' }}>
+                    {gridBrands.map(brand => {
+                      const status = getBrandStatus(brand.id)
+                      const isSelected = selectedBrands.includes(brand.id)
+                      const isDisabled = status === 'approved' || status === 'pending' || status === 'reviewing'
+                      const sc = status ? STATUS_CONFIG[status] : null
+                      return (
+                        <label key={brand.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          padding: '9px 12px', border: '1.5px solid',
+                          borderColor: isSelected ? 'var(--navy)' : status === 'approved' ? 'var(--green)' : status === 'pending' || status === 'reviewing' ? 'var(--amber)' : 'var(--border)',
+                          borderRadius: 'var(--radius)',
+                          cursor: isDisabled ? 'default' : 'pointer',
+                          background: isSelected ? 'var(--surface)' : status === 'approved' ? 'var(--green-bg)' : status === 'pending' || status === 'reviewing' ? 'var(--amber-bg)' : 'var(--white)',
+                          transition: 'all 0.12s', fontSize: 13
+                        }}>
+                          {!isDisabled ? (
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleBrand(brand.id)} style={{ accentColor: 'var(--navy)', flexShrink: 0 }} />
+                          ) : (
+                            <span style={{ fontSize: 11, flexShrink: 0 }}>{sc?.icon}</span>
+                          )}
+                          <span style={{
+                            fontWeight: 500,
+                            color: status === 'approved' ? 'var(--green)' : status === 'pending' || status === 'reviewing' ? 'var(--amber)' : 'var(--navy)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                          }}>
+                            {brand.name}
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Other brand */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginBottom: 16 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: showOther ? 10 : 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={showOther}
+                      onChange={e => { setShowOther(e.target.checked); if (!e.target.checked) setOtherBrand('') }}
+                      style={{ accentColor: 'var(--navy)' }}
+                    />
+                    <span style={{ fontWeight: 500 }}>My brand isn't listed above</span>
+                  </label>
+                  {showOther && (
+                    <div>
+                      <input
+                        className="form-input"
+                        type="text"
+                        value={otherBrand}
+                        onChange={e => setOtherBrand(e.target.value)}
+                        placeholder="Enter brand name(s) — separate multiple with commas"
+                        maxLength={500}
+                      />
+                      <span className="form-hint">
+                        Unlisted brands will be reviewed by our team and may require additional verification.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
             {selectedBrands.length > 0 && (
               <div className="alert alert-info" style={{ marginBottom: 16 }}>
