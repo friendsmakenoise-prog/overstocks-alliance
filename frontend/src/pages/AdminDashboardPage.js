@@ -13,6 +13,7 @@ export default function AdminDashboardPage() {
   const [recentOrders, setRecentOrders] = useState([])
   const [pendingUsers, setPendingUsers] = useState([])
   const [pendingListings, setPendingListings] = useState([])
+  const [pendingBrandApps, setPendingBrandApps] = useState([])
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -26,17 +27,20 @@ export default function AdminDashboardPage() {
         usersResp,
         brandsResp,
         listingsResp,
-        reportsResp
+        reportsResp,
+        brandAppsResp
       ] = await Promise.all([
         api.admin.getUsers({ status: 'pending' }),
         api.admin.getBrands(),
         api.admin.getListings({ status: 'pending_review' }),
-        api.admin.getReports()
+        api.admin.getReports(),
+        api.admin.getBrandApplications({ status: 'pending' })
       ])
 
       setPendingUsers(usersResp.users || [])
       setPendingListings(listingsResp.listings || [])
       setReports(reportsResp.reports || [])
+      setPendingBrandApps(brandAppsResp.applications || [])
 
       // Load financial stats directly from Supabase
       const { data: paidOffers } = await supabase
@@ -114,7 +118,7 @@ export default function AdminDashboardPage() {
 
   if (loading) return <div className="loading-page"><div className="spinner" /></div>
 
-  const urgentCount = (stats?.pendingUsers || 0) + (stats?.pendingListings || 0) + (stats?.openReports || 0)
+  const urgentCount = (stats?.pendingUsers || 0) + (stats?.pendingListings || 0) + (stats?.openReports || 0) + pendingBrandApps.length
 
   return (
     <div className="page">
@@ -242,6 +246,61 @@ export default function AdminDashboardPage() {
                   {pendingUsers.length > 5 && (
                     <div style={{ padding: '10px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
                       +{pendingUsers.length - 5} more — <button onClick={() => navigate('/admin?tab=listings')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Pending listings */}
+            <section>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+                  Brand applications
+                  {pendingBrandApps.length > 0 && (
+                    <span style={{ marginLeft: 8, background: 'var(--amber)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
+                      {pendingBrandApps.length}
+                    </span>
+                  )}
+                </h2>
+                <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin/brand-applications')}>
+                  View all →
+                </button>
+              </div>
+
+              {pendingBrandApps.length === 0 ? (
+                <div className="card" style={{ padding: '16px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                  ✓ No pending brand applications
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {pendingBrandApps.slice(0, 5).map((app, i) => (
+                    <div key={app.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderBottom: i < Math.min(pendingBrandApps.length, 5) - 1 ? '1px solid var(--border)' : 'none'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: 13 }}>
+                          {app.is_other ? app.brand_name_text : app.brand?.name}
+                          {app.is_other && (
+                            <span style={{ marginLeft: 6, fontSize: 11, color: 'var(--amber)', background: 'var(--amber-bg)', padding: '1px 6px', borderRadius: 100 }}>
+                              Unregistered
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                          {app.user?.company_name} · <span style={{ textTransform: 'capitalize' }}>{app.user?.role}</span>
+                        </div>
+                      </div>
+                      <button className="btn btn-outline btn-sm" onClick={() => navigate('/admin/brand-applications')}>
+                        Review →
+                      </button>
+                    </div>
+                  ))}
+                  {pendingBrandApps.length > 5 && (
+                    <div style={{ padding: '10px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted)', borderTop: '1px solid var(--border)' }}>
+                      +{pendingBrandApps.length - 5} more — <button onClick={() => navigate('/admin/brand-applications')} style={{ background: 'none', border: 'none', color: 'var(--navy)', cursor: 'pointer', fontWeight: 500 }}>view all</button>
                     </div>
                   )}
                 </div>
