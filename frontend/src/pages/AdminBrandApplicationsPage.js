@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 
 export default function AdminBrandApplicationsPage() {
@@ -237,9 +238,18 @@ export default function AdminBrandApplicationsPage() {
                             Request supplier input
                           </h4>
                           {(suppliersForBrand[app.brand.id] || []).length === 0 ? (
-                            <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-                              No suppliers registered for this brand yet.
-                            </p>
+                            <div>
+                              <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>
+                                No suppliers are registered as distributors for this brand yet.
+                                You can still send a review request to any approved supplier account.
+                              </p>
+                              <AllSupplierSelector
+                                applicationId={app.id}
+                                existingReviews={supplierReviews}
+                                sendingReview={sendingReview}
+                                onSend={sendReview}
+                              />
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                               {(suppliersForBrand[app.brand.id] || []).map(dist => {
@@ -386,6 +396,57 @@ export default function AdminBrandApplicationsPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ── Fallback supplier selector when no distributions exist ────
+function AllSupplierSelector({ applicationId, existingReviews, sendingReview, onSend }) {
+  const [allSuppliers, setAllSuppliers] = useState([])
+  const [selectedSupplier, setSelectedSupplier] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase
+      .from('user_profiles')
+      .select('id, company_name, email')
+      .eq('role', 'supplier')
+      .eq('status', 'approved')
+      .order('company_name')
+      .then(({ data }) => {
+        setAllSuppliers(data || [])
+        setLoading(false)
+      })
+  }, [])
+
+  if (loading) return <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading suppliers…</div>
+  if (allSuppliers.length === 0) return <p style={{ fontSize: 13, color: 'var(--muted)' }}>No approved supplier accounts yet.</p>
+
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <select
+        className="form-input"
+        style={{ flex: '1 1 200px' }}
+        value={selectedSupplier}
+        onChange={e => setSelectedSupplier(e.target.value)}
+      >
+        <option value="">Select a supplier…</option>
+        {allSuppliers.map(s => {
+          const alreadySent = existingReviews.some(r => r.supplier?.id === s.id)
+          return (
+            <option key={s.id} value={s.id} disabled={alreadySent}>
+              {s.company_name}{alreadySent ? ' (already sent)' : ''}
+            </option>
+          )
+        })}
+      </select>
+      <button
+        className="btn btn-outline btn-sm"
+        disabled={!selectedSupplier || sendingReview === `${applicationId}-${selectedSupplier}`}
+        onClick={() => { onSend(applicationId, selectedSupplier); setSelectedSupplier('') }}
+      >
+        {sendingReview === `${applicationId}-${selectedSupplier}` ? 'Sending…' : 'Send review request'}
+      </button>
     </div>
   )
 }
