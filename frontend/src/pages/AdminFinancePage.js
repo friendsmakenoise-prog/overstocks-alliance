@@ -20,8 +20,6 @@ export default function AdminFinancePage() {
   async function loadAll() {
     setLoading(true)
     try {
-      // Load paid orders with offer and listing details
-      // Load paid orders
       const { data: paidOffers, error: offersError } = await supabase
         .from('offers')
         .select(`
@@ -39,7 +37,6 @@ export default function AdminFinancePage() {
       if (offersError) console.warn('Offers query error:', offersError)
       setOrders(paidOffers || [])
 
-      // Load fee tiers — use admin API to bypass RLS
       const { data: tiers, error: tiersError } = await supabase
         .from('fee_config')
         .select('*')
@@ -64,23 +61,16 @@ export default function AdminFinancePage() {
     try {
       for (const tier of editTiers) {
         const pct = parseFloat(tier.fee_percentage)
-        if (isNaN(pct) || pct < 0 || pct > 100) {
-          throw new Error(`Invalid percentage for ${tier.tier_name}`)
-        }
+        if (isNaN(pct) || pct < 0 || pct > 100) throw new Error(`Invalid percentage for ${tier.tier_name}`)
 
-        const minPence = Math.round(parseFloat(tier.min_value_pounds || tier.min_value_pence / 100) * 100)
+        const minPence = Math.round(parseFloat(tier.min_value_pounds ?? tier.min_value_pence / 100) * 100)
         const maxPence = tier.max_value_pounds !== undefined
           ? (tier.max_value_pounds === '' || tier.max_value_pounds === null ? null : Math.round(parseFloat(tier.max_value_pounds) * 100))
           : tier.max_value_pence
 
         const { error } = await supabase
           .from('fee_config')
-          .update({
-            fee_percentage: pct,
-            min_value_pence: minPence,
-            max_value_pence: maxPence,
-            tier_name: tier.tier_name
-          })
+          .update({ fee_percentage: pct, min_value_pence: minPence, max_value_pence: maxPence, tier_name: tier.tier_name })
           .eq('id', tier.id)
 
         if (error) throw error
@@ -95,17 +85,13 @@ export default function AdminFinancePage() {
   }
 
   function updateTier(id, field, value) {
-    setEditTiers(tiers => tiers.map(t =>
-      t.id === id ? { ...t, [field]: value } : t
-    ))
+    setEditTiers(tiers => tiers.map(t => t.id === id ? { ...t, [field]: value } : t))
   }
 
-  // Calculate totals
-  const totalGoodsValue = orders.reduce((sum, o) =>
-    sum + ((o.agreed_price_pence || o.offered_price_pence) * o.quantity), 0)
-  const totalPlatformFees = orders.reduce((sum, o) => sum + (o.platform_fee_pence || 0), 0)
-  const totalShipping = orders.reduce((sum, o) => sum + (o.shipping_cost_pence || 0), 0)
-  const totalTransactions = orders.length
+  const totalGoodsValue    = orders.reduce((s, o) => s + ((o.agreed_price_pence || o.offered_price_pence) * o.quantity), 0)
+  const totalPlatformFees  = orders.reduce((s, o) => s + (o.platform_fee_pence || 0), 0)
+  const totalShipping      = orders.reduce((s, o) => s + (o.shipping_cost_pence || 0), 0)
+  const totalTransactions  = orders.length
 
   if (loading) return <div className="loading-page"><div className="spinner" /></div>
 
@@ -114,50 +100,31 @@ export default function AdminFinancePage() {
       <div className="container">
 
         <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
-            Finance
-          </h1>
-          <p style={{ color: 'var(--slate)', fontSize: 14 }}>
-            Platform revenue, transaction history and fee configuration
-          </p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>Finance</h1>
+          <p style={{ color: 'var(--slate)', fontSize: 14 }}>Platform revenue, transaction history and fee configuration</p>
         </div>
 
-        {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+        {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
         {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
-        {/* Summary cards */}
-        <div className="stat-cards" style={{ marginBottom: 32 }}>
+        {/* Summary stat cards */}
+        <div className="stat-cards" style={{ marginBottom: 28 }}>
           {[
-            { label: 'Total transactions', value: totalTransactions, format: false },
-            { label: 'Total goods value', value: totalGoodsValue, format: true },
-            { label: 'Platform fees earned', value: totalPlatformFees, format: true, highlight: true },
-            { label: 'Shipping processed', value: totalShipping, format: true },
+            { label: 'Total transactions',  value: totalTransactions,       format: false },
+            { label: 'Total goods value',   value: totalGoodsValue,         format: true },
+            { label: 'Platform fees earned',value: totalPlatformFees,       format: true,  highlight: true },
+            { label: 'Shipping processed',  value: totalShipping,           format: true },
           ].map((card, i) => (
-            <div key={i} style={{
-              background: card.highlight ? 'var(--navy)' : 'var(--white)',
-              border: `1px solid ${card.highlight ? 'var(--navy)' : 'var(--border)'}`,
-              borderRadius: 'var(--radius-lg)',
-              padding: '16px 20px'
-            }}>
-              <div style={{
-                fontSize: 28,
-                fontFamily: 'var(--font-display)',
-                color: card.highlight ? 'var(--gold-light)' : 'var(--navy)',
-                fontWeight: 400,
-                marginBottom: 4
-              }}>
+            <div key={i} className={`stat-card ${card.highlight ? 'highlight' : ''}`}>
+              <div className="stat-card-value" style={{ fontSize: 22 }}>
                 {card.format ? formatPrice(card.value) : card.value}
               </div>
-              <div style={{
-                fontSize: 13,
-                color: card.highlight ? 'rgba(255,255,255,0.6)' : 'var(--muted)'
-              }}>
-                {card.label}
-              </div>
+              <div className="stat-card-label">{card.label}</div>
             </div>
           ))}
         </div>
 
+        {/* Main layout — table + sidebar */}
         <div className="layout-main-sidebar">
 
           {/* Transaction history */}
@@ -172,67 +139,68 @@ export default function AdminFinancePage() {
                 <p>Paid orders will appear here.</p>
               </div>
             ) : (
-              <div className="card table-scroll" style={{ padding: 0, overflow: 'hidden' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Listing</th>
-                      <th className="hide-mobile">Brand</th>
-                      <th className="hide-mobile">Qty</th>
-                      <th>Goods value</th>
-                      <th>Fee</th>
-                      <th className="hide-mobile">Seller payout</th>
-                      <th className="hide-mobile">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map(order => {
-                      const goodsValue = (order.agreed_price_pence || order.offered_price_pence) * order.quantity
-                      return (
-                        <tr key={order.id}>
-                          <td>
-                            <div style={{ fontWeight: 500, fontSize: 13 }}>{order.listing?.title}</div>
-                            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                              {order.buyer?.anonymous_handle} → {order.seller?.anonymous_handle}
-                            </div>
-                          </td>
-                          <td className="hide-mobile" style={{ fontSize: 13 }}>{order.listing?.brands?.name}</td>
-                          <td className="hide-mobile" style={{ fontSize: 13 }}>{order.quantity}</td>
-                          <td style={{ fontSize: 13, fontWeight: 500 }}>{formatPrice(goodsValue)}</td>
-                          <td>
-                            <div style={{ fontSize: 13, color: 'var(--green)', fontWeight: 500 }}>
-                              {formatPrice(order.platform_fee_pence || 0)}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                              {order.platform_fee_pct}%
-                            </div>
-                          </td>
-                          <td className="hide-mobile" style={{ fontSize: 13 }}>{formatPrice(order.seller_payout_pence || 0)}</td>
-                          <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--muted)' }}>
-                            {new Date(order.updated_at).toLocaleDateString('en-GB', {
-                              day: 'numeric', month: 'short', year: 'numeric'
-                            })}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                  {/* Totals row */}
-                  <tfoot>
-                    <tr style={{ background: 'var(--surface)', fontWeight: 500 }}>
-                      <td colSpan={3} style={{ padding: '12px 16px', fontSize: 13 }}>
-                        Totals ({totalTransactions} transaction{totalTransactions !== 1 ? 's' : ''})
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13 }}>{formatPrice(totalGoodsValue)}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--green)', fontWeight: 600 }}>
-                        {formatPrice(totalPlatformFees)}
-                      </td>
-                      <td colSpan={2} style={{ padding: '12px 16px', fontSize: 13 }}>
-                        {formatPrice(orders.reduce((s, o) => s + (o.seller_payout_pence || 0), 0))}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+              <div className="card" style={{ padding: 0 }}>
+                <div className="table-scroll">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Listing</th>
+                        <th className="hide-mobile">Brand</th>
+                        <th>Value</th>
+                        <th>Fee</th>
+                        <th className="hide-mobile">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map(order => {
+                        const goodsValue = (order.agreed_price_pence || order.offered_price_pence) * order.quantity
+                        return (
+                          <tr key={order.id}>
+                            <td>
+                              <div style={{ fontWeight: 500, fontSize: 13 }}>{order.listing?.title}</div>
+                              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                                {order.buyer?.anonymous_handle} → {order.seller?.anonymous_handle}
+                              </div>
+                            </td>
+                            <td className="hide-mobile" style={{ fontSize: 13 }}>{order.listing?.brands?.name}</td>
+                            <td style={{ fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                              {formatPrice(goodsValue)}
+                              <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                                {order.quantity} unit{order.quantity !== 1 ? 's' : ''}
+                              </div>
+                            </td>
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: 13, color: 'var(--green)', fontWeight: 500 }}>
+                                {formatPrice(order.platform_fee_pence || 0)}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                                {order.platform_fee_pct}%
+                              </div>
+                            </td>
+                            <td className="hide-mobile" style={{ fontSize: 12, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                              {new Date(order.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: 'var(--surface)', fontWeight: 500 }}>
+                        <td style={{ padding: '12px 16px', fontSize: 13 }}>
+                          {totalTransactions} transaction{totalTransactions !== 1 ? 's' : ''}
+                        </td>
+                        <td className="hide-mobile" />
+                        <td style={{ padding: '12px 16px', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {formatPrice(totalGoodsValue)}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: 'var(--green)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {formatPrice(totalPlatformFees)}
+                        </td>
+                        <td className="hide-mobile" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -249,54 +217,37 @@ export default function AdminFinancePage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
                 {editTiers.map(tier => (
-                  <div key={tier.id} style={{
-                    padding: '12px 14px',
-                    background: 'var(--surface)',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border)'
-                  }}>
+                  <div key={tier.id} style={{ padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                     <div className="form-group" style={{ marginBottom: 10 }}>
                       <label className="form-label">Tier name</label>
-                      <input
-                        className="form-input"
-                        type="text"
-                        value={tier.tier_name}
-                        onChange={e => updateTier(tier.id, 'tier_name', e.target.value)}
-                      />
+                      <input className="form-input" type="text" value={tier.tier_name}
+                        onChange={e => updateTier(tier.id, 'tier_name', e.target.value)} />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {/* 3-col grid — stacks to 1 on mobile */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Min (£)</label>
-                        <input
-                          className="form-input"
-                          type="number" min="0" step="1"
+                        <label className="form-label" style={{ fontSize: 11 }}>Min (£)</label>
+                        <input className="form-input" type="number" min="0" step="1"
                           value={tier.min_value_pounds ?? (tier.min_value_pence / 100)}
-                          onChange={e => updateTier(tier.id, 'min_value_pounds', e.target.value)}
-                        />
+                          onChange={e => updateTier(tier.id, 'min_value_pounds', e.target.value)} />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Max (£)</label>
-                        <input
-                          className="form-input"
-                          type="number" min="0" step="1"
+                        <label className="form-label" style={{ fontSize: 11 }}>Max (£)</label>
+                        <input className="form-input" type="number" min="0" step="1"
                           value={tier.max_value_pounds ?? (tier.max_value_pence !== null ? tier.max_value_pence / 100 : '')}
                           onChange={e => updateTier(tier.id, 'max_value_pounds', e.target.value)}
-                          placeholder="No limit"
-                        />
+                          placeholder="No limit" />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Fee %</label>
-                        <input
-                          className="form-input"
-                          type="number" min="0" max="100" step="0.1"
+                        <label className="form-label" style={{ fontSize: 11 }}>Fee %</label>
+                        <input className="form-input" type="number" min="0" max="100" step="0.1"
                           value={tier.fee_percentage}
-                          onChange={e => updateTier(tier.id, 'fee_percentage', e.target.value)}
-                        />
+                          onChange={e => updateTier(tier.id, 'fee_percentage', e.target.value)} />
                       </div>
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
                       {tier.max_value_pence === null
-                        ? `Orders over £${(tier.min_value_pence / 100).toLocaleString()} → ${tier.fee_percentage}%`
+                        ? `Over £${(tier.min_value_pence / 100).toLocaleString()} → ${tier.fee_percentage}%`
                         : `£${(tier.min_value_pence / 100).toLocaleString()} – £${(tier.max_value_pence / 100).toLocaleString()} → ${tier.fee_percentage}%`
                       }
                     </div>
@@ -304,17 +255,13 @@ export default function AdminFinancePage() {
                 ))}
               </div>
 
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center' }}
-                onClick={saveTiers}
-                disabled={savingTiers}
-              >
+              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+                onClick={saveTiers} disabled={savingTiers}>
                 {savingTiers ? 'Saving…' : 'Save fee tiers'}
               </button>
 
-              <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--amber-bg)', borderRadius: 'var(--radius)', fontSize: 12, color: 'var(--amber)' }}>
-                ⚠️ Changes apply to new transactions only — existing accepted offers use the fee calculated at offer creation.
+              <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--amber-bg)', borderRadius: 'var(--radius)', fontSize: 12, color: 'var(--amber)', lineHeight: 1.6 }}>
+                ⚠️ Changes apply to new transactions only.
               </div>
             </div>
           </div>
