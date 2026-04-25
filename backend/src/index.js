@@ -10,6 +10,7 @@ const adminRoutes = require('./routes/admin')
 const offersRoutes = require('./routes/offers')
 const paymentsRoutes = require('./routes/payments')
 const brandReviewsRoutes = require('./routes/brandReviews')
+const brandsRoutes = require('./routes/brands')
 
 const app = express()
 
@@ -69,6 +70,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/offers', offersRoutes)
 app.use('/api/payments', paymentsRoutes)
 app.use('/api/brand-reviews', brandReviewsRoutes)
+app.use('/api/brands', brandsRoutes)
 
 // 404 handler
 app.use((req, res) => {
