@@ -155,23 +155,37 @@ export default function BrandAccessPage() {
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
-            Brand access
+            {profile?.role === 'supplier' ? 'My brands' : 'Brand access'}
           </h1>
           <p style={{ color: 'var(--slate)', fontSize: 14 }}>
-            Apply for access to additional brands. Applications are reviewed by our team and verified with brand suppliers.
+            {profile?.role === 'supplier'
+              ? 'Manage your registered brands and dealership tiers.'
+              : 'Apply for access to additional brands. Applications are reviewed by our team and verified with brand suppliers.'
+            }
           </p>
         </div>
 
         {error   && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
-        {/* Current access summary */}
+        {/* Supplier pending notification */}
+        {profile?.role === 'supplier' && brandGroups.pending.length > 0 && (
+          <div className="alert alert-warning" style={{ marginBottom: 16 }}>
+            ⏳ You have <strong>{brandGroups.pending.length}</strong> brand submission{brandGroups.pending.length !== 1 ? 's' : ''} currently under review. We'll notify you once a decision has been made.
+          </div>
+        )}
+
+        {/* Stat cards — role appropriate */}
         <div className="stat-cards" style={{ marginBottom: 24 }}>
-          {[
-            { label: 'Brands with access', value: myPermissions.length, highlight: true },
-            { label: 'Applications pending', value: brandGroups.pending.length },
-            { label: 'Available to apply', value: brandGroups.available.length },
-          ].map((s, i) => (
+          {(profile?.role === 'supplier' ? [
+            { label: 'Registered brands', value: myPermissions.length, highlight: true },
+            { label: 'Pending review',    value: brandGroups.pending.length },
+            { label: 'Declined',          value: brandGroups.declined.length },
+          ] : [
+            { label: 'Brands with access',   value: myPermissions.length, highlight: true },
+            { label: 'Applications pending',  value: brandGroups.pending.length },
+            { label: 'Available to apply',    value: brandGroups.available.length },
+          ]).map((s, i) => (
             <div key={i} className={`stat-card ${s.highlight ? 'highlight' : ''}`}>
               <div className="stat-card-value">{s.value}</div>
               <div className="stat-card-label">{s.label}</div>
@@ -182,25 +196,28 @@ export default function BrandAccessPage() {
         {/* Apply for new brands */}
         <div className="card" style={{ marginBottom: 24 }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 4 }}>
-            Apply for additional brands
+            {profile?.role === 'supplier' ? 'Add a brand or tier' : 'Apply for additional brands'}
           </h2>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-            Select brands you are authorised to sell. Brands with existing access or pending applications are shown but cannot be reselected.
+            {profile?.role === 'supplier'
+              ? 'Register new brands or dealership tiers you distribute. Each tier should be added separately.'
+              : 'Select brands you are authorised to sell. Brands with existing access or pending applications are shown but cannot be reselected.'
+            }
           </p>
 
           {/* Supplier-only: dealership tier guidance */}
           {profile?.role === 'supplier' && (
             <div style={{
-              padding: '10px 14px',
+              padding: '12px 14px',
               background: 'var(--amber-bg)',
               border: '1px solid rgba(180,83,9,0.2)',
               borderRadius: 'var(--radius)',
               marginBottom: 16,
-              fontSize: 12,
+              fontSize: 13,
               color: 'var(--amber)',
-              lineHeight: 1.6
+              lineHeight: 1.7
             }}>
-              <strong>If your brand uses dealership tiers</strong> — for example Gold, Platinum, or Premier dealer levels — register each tier as a separate entry using the "My brand isn't listed" field below. This allows us to match retailers to the correct product access level during review.
+              <strong>Dealership tiers:</strong> If your brand has Gold, Platinum, Premier or other dealer levels, add each as a separate entry — e.g. "Brand Gold" and "Brand Platinum". This lets us match retailers to the correct access level.
             </div>
           )}
 
