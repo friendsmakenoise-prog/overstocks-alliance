@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 
 export default function AdminBrandApplicationsPage() {
@@ -407,16 +406,13 @@ function AllSupplierSelector({ applicationId, existingReviews, sendingReview, on
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase
-      .from('user_profiles')
-      .select('id, company_name, email')
-      .eq('role', 'supplier')
-      .eq('status', 'approved')
-      .order('company_name')
-      .then(({ data }) => {
-        setAllSuppliers(data || [])
+    // Use admin API which uses supabaseAdmin client — bypasses RLS
+    api.admin.getUsers({ role: 'supplier', status: 'approved' })
+      .then(data => {
+        setAllSuppliers(data.users || [])
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [])
 
   if (loading) return <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading suppliers…</div>
