@@ -204,8 +204,10 @@ export default function ListingDetailPage() {
                   ⏳ Sale pending — an offer has been accepted and payment is awaited
                 </div>
               ) : profile?.role === 'supplier' ? (
-                <div style={{ padding: '10px 14px', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
-                  Viewing as supplier
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ padding: '10px 14px', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--muted)', textAlign: 'center', border: '1px solid var(--border)' }}>
+                    Viewing as supplier — purchasing disabled
+                  </div>
                 </div>
               ) : listing.seller_id !== profile?.id ? (
                 <button
