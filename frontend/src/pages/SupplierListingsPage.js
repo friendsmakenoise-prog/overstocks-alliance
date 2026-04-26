@@ -113,7 +113,7 @@ export default function SupplierListingsPage() {
         </div>
 
         {/* Search & filter bar */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+        <div className="supplier-filter-bar">
           <input
             className="form-input"
             style={{ flex: '1 1 180px', minWidth: 140 }}
