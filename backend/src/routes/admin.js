@@ -278,6 +278,7 @@ router.get('/users/:id/permissions', async (req, res) => {
       .from('brand_permissions')
       .select('*, brands(id, name, slug)')
       .eq('user_id', req.params.id)
+      .order('granted_at', { ascending: false })
 
     if (error) throw error
     res.json({ permissions })
