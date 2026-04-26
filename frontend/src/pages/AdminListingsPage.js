@@ -104,6 +104,7 @@ export default function AdminListingsPage() {
       price_pounds: (listing.price_pence / 100).toFixed(2),
       quantity: listing.quantity || 1,
       description: listing.description || '',
+      open_to_all: listing.open_to_all || false,
     })
   }
 
@@ -118,6 +119,7 @@ export default function AdminListingsPage() {
           price_pence: Math.round(parseFloat(editForm.price_pounds) * 100),
           quantity: parseInt(editForm.quantity),
           description: editForm.description?.trim() || null,
+          open_to_all: editForm.open_to_all,
         })
         .eq('id', listingId)
 
@@ -315,6 +317,11 @@ export default function AdminListingsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontWeight: 500, fontSize: 14 }}>{listing.title}</span>
                         <span className={`badge ${sc.class}`} style={{ fontSize: 11 }}>{sc.label}</span>
+                        {listing.open_to_all && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--amber)', background: 'var(--amber-bg)', padding: '2px 7px', borderRadius: 100, border: '1px solid rgba(180,83,9,0.2)' }}>
+                            OPEN TO ALL
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                         <span>{listing.brands?.name}</span>
@@ -387,6 +394,17 @@ export default function AdminListingsPage() {
                         <label className="form-label">Description</label>
                         <textarea className="form-input" rows={2} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))} style={{ resize: 'none' }} />
                       </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginBottom: 12 }}>
+                        <input
+                          type="checkbox"
+                          checked={editForm.open_to_all || false}
+                          onChange={e => setEditForm(f => ({ ...f, open_to_all: e.target.checked }))}
+                          style={{ accentColor: 'var(--amber)' }}
+                        />
+                        <span style={{ color: editForm.open_to_all ? 'var(--amber)' : 'var(--slate)', fontWeight: editForm.open_to_all ? 500 : 400 }}>
+                          Open to all verified retailers
+                        </span>
+                      </label>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-primary btn-sm" onClick={() => saveEdit(listing.id)} disabled={savingEdit}>
                           {savingEdit ? 'Saving…' : 'Save changes'}
