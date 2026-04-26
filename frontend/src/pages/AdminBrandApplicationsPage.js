@@ -417,6 +417,7 @@ function AllSupplierSelector({ applicationId, existingReviews, sendingReview, on
   const [selectedSupplier, setSelectedSupplier] = useState('')
   const [loading, setLoading] = useState(true)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // Use admin API which uses supabaseAdmin client — bypasses RLS
     api.admin.getUsers({ role: 'supplier', status: 'approved' })
