@@ -33,14 +33,22 @@ router.get('/public', requireAuth, async (req, res) => {
  */
 router.get('/my-retailers', requireAuth, async (req, res) => {
   try {
-    // Get brands this supplier distributes
+    // Get brands from distributions, fall back to permissions
     const { data: distributions } = await supabaseAdmin
       .from('supplier_brand_distributions')
       .select('brand_id, brand:brand_id(id, name)')
       .eq('supplier_id', req.user.id)
-      .eq('verified', true)
 
-    const brandIds = (distributions || []).map(d => d.brand_id).filter(Boolean)
+    let brandIds = (distributions || []).map(d => d.brand_id).filter(Boolean)
+
+    if (brandIds.length === 0) {
+      const { data: perms } = await supabaseAdmin
+        .from('brand_permissions')
+        .select('brand_id')
+        .eq('user_id', req.user.id)
+        .is('revoked_at', null)
+      brandIds = (perms || []).map(p => p.brand_id).filter(Boolean)
+    }
 
     if (brandIds.length === 0) {
       return res.json({ retailers: [], brands: [] })
@@ -94,14 +102,27 @@ router.get('/my-retailers', requireAuth, async (req, res) => {
  */
 router.get('/my-listings', requireAuth, async (req, res) => {
   try {
-    // Get brands this supplier distributes
+    // Get brands from distributions first
     const { data: distributions } = await supabaseAdmin
       .from('supplier_brand_distributions')
       .select('brand_id, brand:brand_id(id, name)')
       .eq('supplier_id', req.user.id)
-      .eq('verified', true)
 
-    const brandIds = (distributions || []).map(d => d.brand_id).filter(Boolean)
+    let brandIds = (distributions || []).map(d => d.brand_id).filter(Boolean)
+    let brandData = (distributions || []).map(d => d.brand).filter(Boolean)
+
+    // Fallback: if no distributions, use brand_permissions
+    // (covers suppliers approved before the distributions flow existed)
+    if (brandIds.length === 0) {
+      const { data: perms } = await supabaseAdmin
+        .from('brand_permissions')
+        .select('brand_id, brand:brand_id(id, name)')
+        .eq('user_id', req.user.id)
+        .is('revoked_at', null)
+
+      brandIds = (perms || []).map(p => p.brand_id).filter(Boolean)
+      brandData = (perms || []).map(p => p.brand).filter(Boolean)
+    }
 
     if (brandIds.length === 0) {
       return res.json({ listings: [], brands: [] })
@@ -134,7 +155,7 @@ router.get('/my-listings', requireAuth, async (req, res) => {
         )
       : (listings || [])
 
-    const brands = (distributions || []).map(d => d.brand).filter(Boolean)
+    const brands = brandData
 
     res.json({ listings: filtered, brands })
   } catch (err) {
@@ -162,15 +183,31 @@ router.post('/listings/:id/toggle-open', requireAuth, async (req, res) => {
     }
 
     // Verify this supplier distributes this brand
+    // Check distributions first, fall back to permissions
+    let authorised = false
+
     const { data: dist } = await supabaseAdmin
       .from('supplier_brand_distributions')
       .select('id')
       .eq('supplier_id', req.user.id)
       .eq('brand_id', listing.brand_id)
-      .eq('verified', true)
       .single()
 
-    if (!dist) {
+    if (dist) {
+      authorised = true
+    } else {
+      // Fallback: check brand_permissions
+      const { data: perm } = await supabaseAdmin
+        .from('brand_permissions')
+        .select('id')
+        .eq('user_id', req.user.id)
+        .eq('brand_id', listing.brand_id)
+        .is('revoked_at', null)
+        .single()
+      if (perm) authorised = true
+    }
+
+    if (!authorised) {
       return res.status(403).json({ error: 'Not authorised — this brand is not in your distribution list' })
     }
 
