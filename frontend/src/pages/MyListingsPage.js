@@ -26,7 +26,6 @@ export default function MyListingsPage() {
   const [saving, setSaving] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(null)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadMyListings() }, [])
 
   async function loadMyListings() {
