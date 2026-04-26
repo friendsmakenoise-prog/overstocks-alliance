@@ -48,7 +48,6 @@ export default function AdminListingsPage() {
   const [confirming, setConfirming] = useState(null) // { action, id, title }
   const [actionNote, setActionNote] = useState('')
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
