@@ -35,7 +35,7 @@ export default function MyListingsPage() {
         .from('listings')
         .select(`
           id, title, description, price_pence, quantity,
-          shipping_mode, shipping_cost_pence, image_urls,
+          shipping_mode, shipping_cost_pence, image_urls, open_to_all,
           status, sku, created_at, updated_at,
           brands ( id, name )
         `)
@@ -51,6 +51,8 @@ export default function MyListingsPage() {
     }
   }
 
+  const isSupplier = profile?.role === 'supplier'
+
   function startEdit(listing) {
     setEditingId(listing.id)
     setEditForm({
@@ -60,7 +62,8 @@ export default function MyListingsPage() {
       quantity: listing.quantity,
       shippingMode: listing.shipping_mode,
       shippingCostPounds: listing.shipping_cost_pence ? (listing.shipping_cost_pence / 100).toFixed(2) : '',
-      sku: listing.sku || ''
+      sku: listing.sku || '',
+      openToAll: listing.open_to_all || false
     })
   }
 
@@ -83,6 +86,9 @@ export default function MyListingsPage() {
           ? Math.round(parseFloat(editForm.shippingCostPounds) * 100)
           : null,
         sku: editForm.sku || null,
+        // Suppliers can control open_to_all on their own listings
+        // Retailers cannot — value stays unchanged for them
+        ...(isSupplier ? { open_to_all: editForm.openToAll } : {}),
         // Re-submit for review if it was previously active
         status: 'pending_review'
       }
@@ -204,6 +210,11 @@ export default function MyListingsPage() {
                         <span className={`badge ${STATUS_LABELS[listing.status]?.class || 'badge-draft'}`}>
                           {STATUS_LABELS[listing.status]?.label || listing.status}
                         </span>
+                        {listing.open_to_all && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--amber)', background: 'var(--amber-bg)', padding: '2px 7px', borderRadius: 100, border: '1px solid rgba(180,83,9,0.2)' }}>
+                            OPEN TO ALL
+                          </span>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 16, fontSize: 13, color: 'var(--muted)', flexWrap: 'wrap' }}>
                         <span>{listing.brands?.name}</span>
@@ -358,6 +369,35 @@ export default function MyListingsPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Open to all — suppliers only */}
+                    {isSupplier && (
+                      <div style={{
+                        padding: '12px 14px',
+                        background: editForm.openToAll ? 'var(--amber-bg)' : 'var(--surface)',
+                        border: `1.5px solid ${editForm.openToAll ? 'var(--amber)' : 'var(--border)'}`,
+                        borderRadius: 'var(--radius)',
+                        marginTop: 4,
+                        transition: 'all 0.15s'
+                      }}>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={editForm.openToAll || false}
+                            onChange={e => setEditForm(f => ({ ...f, openToAll: e.target.checked }))}
+                            style={{ accentColor: 'var(--amber)', marginTop: 2, flexShrink: 0 }}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 500, fontSize: 13, color: editForm.openToAll ? 'var(--amber)' : 'var(--navy)' }}>
+                              Open to all verified retailers
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--slate)', marginTop: 2, lineHeight: 1.5 }}>
+                              Tick to make this listing visible to all approved retailers, not just those authorised for your brand. Ideal for clearance or discontinued lines.
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
                       <button className="btn btn-outline" onClick={cancelEdit} disabled={saving}>
