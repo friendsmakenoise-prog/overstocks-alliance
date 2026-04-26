@@ -156,11 +156,24 @@ router.get('/', requireAuth, async (req, res) => {
       .eq('status', 'active')
       .order('created_at', { ascending: false })
 
-    // Include listings user is brand-approved for, PLUS any open_to_all listings
-    if (approvedBrandIds.length > 0) {
-      query = query.or(`brand_id.in.(${approvedBrandIds.join(',')}),open_to_all.eq.true`)
+    // Suppliers only see listings for their approved brands — open_to_all is a retailer feature
+    // Retailers see their approved brands PLUS any open_to_all listings
+    const isSupplier = req.user.role === 'supplier'
+
+    if (isSupplier) {
+      // Suppliers: brand-gated only, no open_to_all bypass
+      if (approvedBrandIds.length > 0) {
+        query = query.in('brand_id', approvedBrandIds)
+      } else {
+        return res.json({ listings: [], page: 1, limit: 24, total: 0 })
+      }
     } else {
-      query = query.eq('open_to_all', true)
+      // Retailers: approved brands + any open_to_all listings
+      if (approvedBrandIds.length > 0) {
+        query = query.or(`brand_id.in.(${approvedBrandIds.join(',')}),open_to_all.eq.true`)
+      } else {
+        query = query.eq('open_to_all', true)
+      }
     }
 
     // Optional filters from query string
