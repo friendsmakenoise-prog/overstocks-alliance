@@ -130,6 +130,24 @@ export default function MyListingsPage() {
     }
   }
 
+  async function toggleOpenToAll(listingId, currentValue) {
+    try {
+      const { error } = await supabase
+        .from('listings')
+        .update({ open_to_all: !currentValue })
+        .eq('id', listingId)
+        .eq('seller_id', profile.id) // Security: can only edit own listings
+
+      if (error) throw error
+      // Optimistic update
+      setListings(prev => prev.map(l =>
+        l.id === listingId ? { ...l, open_to_all: !currentValue } : l
+      ))
+    } catch (err) {
+      setError('Failed to update listing — ' + err.message)
+    }
+  }
+
   async function relistListing(listingId) {
     try {
       const { error } = await supabase
@@ -151,7 +169,7 @@ export default function MyListingsPage() {
     <div className="page">
       <div className="container">
 
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: isSupplier ? 16 : 28 }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
               My listings
@@ -164,6 +182,13 @@ export default function MyListingsPage() {
             + New listing
           </button>
         </div>
+
+        {/* Supplier: open-to-all explanation */}
+        {isSupplier && listings.length > 0 && (
+          <div style={{ padding: '12px 16px', background: 'var(--amber-bg)', border: '1px solid rgba(180,83,9,0.2)', borderRadius: 'var(--radius)', marginBottom: 24, fontSize: 13, color: 'var(--amber)', lineHeight: 1.6 }}>
+            <strong>⭐ Open to all</strong> — use this toggle on any active listing to make it visible to all verified retailers, not just those authorised for your brand. Ideal for clearance or discontinued lines. Toggle it off at any time to restore normal brand-gated access.
+          </div>
+        )}
 
         {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
 
@@ -235,16 +260,35 @@ export default function MyListingsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center', borderLeft: '1px solid var(--border)', minWidth: 120 }}>
+                    <div style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 8, justifyContent: 'center', borderLeft: '1px solid var(--border)', minWidth: 130 }}>
                       {listing.status !== 'removed' && (
                         <button
                           className="btn btn-outline btn-sm"
                           onClick={() => startEdit(listing)}
                           style={{ justifyContent: 'center' }}
                         >
-                          Edit
+                          ✏️ Edit
                         </button>
                       )}
+
+                      {/* Open to all quick toggle — suppliers only, active listings only */}
+                      {isSupplier && listing.status === 'active' && (
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            justifyContent: 'center',
+                            background: listing.open_to_all ? 'var(--amber-bg)' : 'var(--surface)',
+                            border: `1.5px solid ${listing.open_to_all ? 'var(--amber)' : 'var(--border)'}`,
+                            color: listing.open_to_all ? 'var(--amber)' : 'var(--slate)',
+                            fontWeight: 500
+                          }}
+                          onClick={() => toggleOpenToAll(listing.id, listing.open_to_all)}
+                          title={listing.open_to_all ? 'Remove open to all — restrict to authorised dealers' : 'Mark as open to all verified retailers'}
+                        >
+                          {listing.open_to_all ? '⭐ Open to all' : '☆ Open to all'}
+                        </button>
+                      )}
+
                       {listing.status === 'removed' ? (
                         <button
                           className="btn btn-outline btn-sm"
