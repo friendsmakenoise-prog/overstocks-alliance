@@ -94,13 +94,13 @@ export default function ListingsPage() {
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
-              Available stock
+              {isSupplier ? 'Brand listings' : 'Available stock'}
             </h1>
             <p style={{ color: 'var(--slate)', fontSize: 14 }}>
               {showAll
                 ? `Showing all listings — ${authorisedCount} available to you`
                 : isSupplier
-                  ? `Stock from your ${approvedBrands.length} registered brand${approvedBrands.length !== 1 ? 's' : ''}`
+                  ? `All active listings across your ${approvedBrands.length} registered brand${approvedBrands.length !== 1 ? 's' : ''}`
                   : `Showing listings for your ${approvedBrands.length} approved brand${approvedBrands.length !== 1 ? 's' : ''}`
               }
             </p>
