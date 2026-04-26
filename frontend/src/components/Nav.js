@@ -37,6 +37,10 @@ export default function Nav() {
           (listings.listings?.length || 0) +
           (reports.reports?.length || 0)
         )
+      } else if (isSupplier) {
+        // Suppliers only need to know about brand review requests
+        const data = await api.getMyBrandReviews()
+        setUrgentCount((data.reviews || []).filter(r => r.status === 'pending').length)
       } else {
         const data = await api.getOffers()
         const urgent = (data.offers || []).filter(o => {
@@ -65,14 +69,17 @@ export default function Nav() {
     { to: '/admin/listings', label: 'Listings & orders' },
     { to: '/admin/brand-applications', label: 'Brand applications' },
     { to: '/admin/finance', label: 'Finance' },
+  ] : isSupplier ? [
+    { to: '/', label: 'Dashboard', badge: urgentCount },
+    { to: '/listings/new', label: '+ New listing' },
+    { to: '/my-listings', label: 'My listings' },
+    { to: '/settings/brands', label: 'Brands' },
   ] : [
     { to: '/', label: 'Dashboard', badge: urgentCount },
     { to: '/listings', label: 'Browse' },
-    ...(profile.role === 'supplier' || profile.role === 'retailer' ? [
-      { to: '/listings/new', label: '+ New listing' },
-      { to: '/my-listings', label: 'My listings' },
-      { to: '/settings/brands', label: 'Brands' },
-    ] : []),
+    { to: '/listings/new', label: '+ New listing' },
+    { to: '/my-listings', label: 'My listings' },
+    { to: '/settings/brands', label: 'Brands' },
   ]
 
   return (
