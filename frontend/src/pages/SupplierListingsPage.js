@@ -29,7 +29,6 @@ export default function SupplierListingsPage() {
   const [brandFilter, setBrandFilter] = useState('')
   const [openToAllOnly, setOpenToAllOnly] = useState(false)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
