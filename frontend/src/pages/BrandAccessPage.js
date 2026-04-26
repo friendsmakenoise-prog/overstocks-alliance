@@ -254,13 +254,11 @@ export default function BrandAccessPage() {
                     .filter(b => myPermissions.includes(b.id))
                     .filter(b => !approvedSearch || b.name.toLowerCase().includes(approvedSearch.toLowerCase()))
                     .map(brand => (
-                      <div key={brand.id} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      <div key={brand.id} className="brand-approved-row" style={{
                         padding: '10px 14px',
                         background: 'var(--green-bg)',
                         border: '1px solid var(--green)',
                         borderRadius: 'var(--radius)',
-                        gap: 12, flexWrap: 'wrap'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ color: 'var(--green)', fontSize: 14 }}>✓</span>
