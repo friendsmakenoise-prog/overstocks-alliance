@@ -746,12 +746,55 @@ function BrandReviewCard({ review, onRespond }) {
         </div>
 
         {/* Applicant details */}
-        <div style={{ padding: '10px 12px', background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Applicant</div>
-          <div style={{ fontSize: 13, color: 'var(--navy)', fontWeight: 500 }}>
+        <div style={{ padding: '12px 14px', background: 'var(--white)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+            Applicant details
+          </div>
+
+          <div style={{ fontSize: 14, color: 'var(--navy)', fontWeight: 500, marginBottom: 2 }}>
             {review.applicant?.company_name || 'Name unavailable'}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{review.applicant?.role}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize', marginBottom: 10 }}>
+            {review.applicant?.role}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {review.applicant?.contact_name && (
+              <div style={{ fontSize: 12, display: 'flex', gap: 6 }}>
+                <span>👤</span>
+                <span style={{ color: 'var(--slate)' }}>{review.applicant.contact_name}</span>
+              </div>
+            )}
+            {review.applicant?.phone && (
+              <div style={{ fontSize: 12, display: 'flex', gap: 6 }}>
+                <span>📞</span>
+                <span style={{ color: 'var(--slate)' }}>{review.applicant.phone}</span>
+              </div>
+            )}
+            {review.applicant?.website && (
+              <div style={{ fontSize: 12, display: 'flex', gap: 6 }}>
+                <span>🌐</span>
+                <a href={review.applicant.website} target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'var(--navy)', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                  {review.applicant.website}
+                </a>
+              </div>
+            )}
+            {review.applicant?.trading_address && (
+              <div style={{ fontSize: 12, display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                <span>📍</span>
+                <span style={{ color: 'var(--slate)', whiteSpace: 'pre-line' }}>
+                  {review.applicant.trading_address}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {(!review.applicant?.website && !review.applicant?.trading_address) && (
+            <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 8 }}>
+              ⚠️ No website or address on file — applicant may need to update their profile
+            </div>
+          )}
         </div>
 
         <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
