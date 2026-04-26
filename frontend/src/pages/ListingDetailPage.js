@@ -66,8 +66,8 @@ export default function ListingDetailPage() {
           <div className="empty-state">
             <h3>Listing not found</h3>
             <p>{error || 'This listing does not exist or you do not have access.'}</p>
-            <button className="btn btn-outline" style={{ marginTop: 20 }} onClick={() => navigate('/listings')}>
-              Back to listings
+            <button className="btn btn-outline" style={{ marginTop: 20 }} onClick={() => navigate(-1)}>
+              ← Go back
             </button>
           </div>
         </div>
@@ -139,6 +139,18 @@ export default function ListingDetailPage() {
               }}>
                 {listing.brands?.name}
               </div>
+
+              {listing.open_to_all && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', background: 'var(--amber-bg)',
+                  border: '1px solid rgba(180,83,9,0.25)', borderRadius: 100,
+                  fontSize: 12, fontWeight: 600, color: 'var(--amber)',
+                  marginBottom: 10, letterSpacing: '0.04em'
+                }}>
+                  ⭐ Open to all verified retailers
+                </div>
+              )}
 
               <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, marginBottom: 8, lineHeight: 1.3 }}>
                 {listing.title}
