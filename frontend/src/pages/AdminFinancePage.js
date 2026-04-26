@@ -15,7 +15,6 @@ export default function AdminFinancePage() {
   const [success, setSuccess] = useState('')
   const [editTiers, setEditTiers] = useState([])
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
