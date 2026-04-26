@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
 
@@ -10,13 +10,17 @@ function formatPrice(pence) {
 export default function ListingsPage() {
   const { profile, loadProfile, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAllState, setShowAllState] = useState(false)
   const [openToAllOnly, setOpenToAllOnly] = useState(false)
-  const [filters, setFilters] = useState({ brand_id: '', min_price: '', max_price: '' })
-  const [search, setSearch] = useState('')
+  const [filters, setFilters] = useState({
+    brand_id: location.state?.brand_id || '',
+    min_price: '', max_price: ''
+  })
+  const [search, setSearch] = useState(location.state?.brand_name ? '' : '')
   const [sort, setSort] = useState('newest')
   const [applying, setApplying] = useState({})
 
@@ -215,6 +219,20 @@ export default function ListingsPage() {
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
+
+        {/* Brand pre-filter banner */}
+        {location.state?.brand_name && filters.brand_id && (
+          <div className="alert alert-info" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Showing listings for <strong>{location.state.brand_name}</strong></span>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => { setFilters({ brand_id: '', min_price: '', max_price: '' }); window.history.replaceState({}, '') }}
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
+
         {loading && <div className="loading-page"><div className="spinner" /></div>}
 
         {/* Empty states */}
