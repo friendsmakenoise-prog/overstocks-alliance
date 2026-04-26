@@ -12,11 +12,12 @@ export default function CreateListingPage() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const approvedBrands = profile?.approvedBrands || []
+  const isSupplier = profile?.role === 'supplier'
 
   const [form, setForm] = useState({
     title: '', description: '', pricePounds: '',
     quantity: '1', brandId: '', shippingMode: 'buyer_arranges',
-    shippingCostPounds: '', sku: ''
+    shippingCostPounds: '', sku: '', openToAll: false
   })
   const [images, setImages] = useState([]) // { file, preview, uploading, url, error }
   const [loading, setLoading] = useState(false)
@@ -364,6 +365,40 @@ export default function CreateListingPage() {
                 </div>
               )}
             </div>
+
+            {/* Open to all toggle — suppliers only */}
+            {isSupplier && (
+              <div style={{
+                padding: '14px 16px',
+                background: form.openToAll ? 'var(--amber-bg)' : 'var(--surface)',
+                border: `1.5px solid ${form.openToAll ? 'var(--amber)' : 'var(--border)'}`,
+                borderRadius: 'var(--radius)',
+                marginTop: 8,
+                transition: 'all 0.15s'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.openToAll}
+                    onChange={e => setForm(f => ({ ...f, openToAll: e.target.checked }))}
+                    style={{ accentColor: 'var(--amber)', marginTop: 2, flexShrink: 0 }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: 14, color: form.openToAll ? 'var(--amber)' : 'var(--navy)' }}>
+                      Open to all verified retailers
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--slate)', marginTop: 3, lineHeight: 1.5 }}>
+                      Any approved retailer on the platform can see and purchase this listing — not just those authorised for your brand. Useful for discontinued or clearance lines where you want maximum exposure.
+                    </div>
+                  </div>
+                </label>
+                {form.openToAll && (
+                  <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(180,83,9,0.2)' }}>
+                    ⚠️ This listing will be visible to all verified retailers on the platform, regardless of their brand authorisations.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="alert alert-info" style={{ marginTop: 8 }}>
               🔒 Your company name and contact details will never be shown to other users. You'll be identified only as <strong>{profile?.anonymous_handle}</strong>.
