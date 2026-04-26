@@ -25,9 +25,8 @@ export default function BrandAccessPage() {
   useEffect(() => { loadAll() }, [profile?.id])
 
   // Refresh permissions on mount to pick up admin changes
-  useEffect(() => {
-    if (user?.id) loadProfile(user.id)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (user?.id) loadProfile(user.id) }, [])
 
   async function loadAll() {
     if (!profile?.id) return
