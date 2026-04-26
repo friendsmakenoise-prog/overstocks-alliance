@@ -254,6 +254,9 @@ export default function DashboardPage() {
                   <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/payments')}>
                     Payment settings <span>→</span>
                   </button>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/help')}>
+                    Help & getting started <span>→</span>
+                  </button>
                 </div>
               </div>
             </div>
