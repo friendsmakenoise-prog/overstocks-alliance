@@ -5,7 +5,7 @@ import { api } from '../lib/api'
 import { useAuth } from '../lib/AuthContext'
 
 export default function BrandAccessPage() {
-  const { profile } = useAuth()
+  const { profile, loadProfile, user } = useAuth()
   const navigate = useNavigate()
   const [activeBrands, setActiveBrands] = useState([])
   const [myApplications, setMyApplications] = useState([])
@@ -22,6 +22,11 @@ export default function BrandAccessPage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => { loadAll() }, [profile?.id])
+
+  // Refresh permissions on mount to pick up admin changes
+  useEffect(() => {
+    if (user?.id) loadProfile(user.id)
+  }, [])
 
   async function loadAll() {
     if (!profile?.id) return
