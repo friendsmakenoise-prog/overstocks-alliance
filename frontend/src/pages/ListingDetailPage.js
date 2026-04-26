@@ -195,22 +195,17 @@ export default function ListingDetailPage() {
                   ✓ This listing has been sold
                 </div>
               ) : salePending ? (
-                <div>
-                  <div style={{
-                    padding: '12px 16px', background: 'var(--amber-bg)',
-                    borderRadius: 'var(--radius)', fontSize: 13,
-                    color: 'var(--amber)', textAlign: 'center',
-                    marginBottom: 10, border: '1px solid var(--gold)'
-                  }}>
-                    ⏳ Sale pending — an offer has been accepted and payment is awaited
-                  </div>
-                  <button
-                    className="btn btn-outline btn-lg"
-                    style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}
-                    disabled
-                  >
-                    Buy now / Make an offer
-                  </button>
+                <div style={{
+                  padding: '12px 16px', background: 'var(--amber-bg)',
+                  borderRadius: 'var(--radius)', fontSize: 13,
+                  color: 'var(--amber)', textAlign: 'center',
+                  border: '1px solid var(--gold)'
+                }}>
+                  ⏳ Sale pending — an offer has been accepted and payment is awaited
+                </div>
+              ) : profile?.role === 'supplier' ? (
+                <div style={{ padding: '10px 14px', background: 'var(--surface)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+                  Viewing as supplier
                 </div>
               ) : listing.seller_id !== profile?.id ? (
                 <button
