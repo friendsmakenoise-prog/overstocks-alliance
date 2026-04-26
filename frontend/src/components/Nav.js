@@ -73,7 +73,7 @@ export default function Nav() {
   ] : isSupplier ? [
     { to: '/', label: 'Dashboard', badge: urgentCount },
     { to: '/listings/new', label: '+ New listing' },
-    { to: '/listings', label: 'Brand listings' },
+    { to: '/supplier/listings', label: 'Brand listings' },
     { to: '/settings/brands', label: 'Brands' },
   ] : [
     { to: '/', label: 'Dashboard', badge: urgentCount },
