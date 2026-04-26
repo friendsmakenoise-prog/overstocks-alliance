@@ -148,8 +148,20 @@ export default function AdminBrandApplicationsPage() {
               const pendingReviews = supplierReviews.filter(r => r.status === 'pending')
               const respondedReviews = supplierReviews.filter(r => r.status !== 'pending')
 
+              const hasSupplierResponse = supplierReviews.some(r => r.responded_at)
+
               return (
-                <div key={app.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                <div key={app.id} className="card" style={{
+                  padding: 0, overflow: 'hidden',
+                  borderLeft: hasSupplierResponse ? '3px solid var(--green)' : undefined
+                }}>
+
+                  {/* Supplier responded banner */}
+                  {hasSupplierResponse && app.status === 'reviewing' && (
+                    <div style={{ padding: '8px 16px', background: 'var(--green-bg)', borderBottom: '1px solid var(--green)', fontSize: 12, color: 'var(--green)', fontWeight: 500, display: 'flex', gap: 8, alignItems: 'center' }}>
+                      ✓ Supplier has responded — click to review and make your decision
+                    </div>
+                  )}
 
                   {/* Header row */}
                   <div
