@@ -36,7 +36,7 @@ router.get('/all', requireAuth, async (req, res) => {
       .select(`
         id, title, description, price_pence, quantity,
         shipping_mode, shipping_cost_pence, image_urls,
-        status, created_at, brand_id,
+        status, open_to_all, created_at, brand_id,
         brands ( id, name, slug )
       `)
       .eq('status', 'active')
@@ -51,7 +51,7 @@ router.get('/all', requireAuth, async (req, res) => {
     // Tag each listing with authorisation status
     const tagged = (listings || []).map(l => ({
       ...l,
-      authorised: approvedBrandIds.includes(l.brand_id),
+      authorised: approvedBrandIds.includes(l.brand_id) || l.open_to_all,
       applied:    pendingBrandIds.includes(l.brand_id)
     }))
 
@@ -147,14 +147,21 @@ router.get('/', requireAuth, async (req, res) => {
         shipping_cost_pence,
         image_urls,
         status,
+        open_to_all,
         view_count,
         created_at,
         brand_id,
         brands ( id, name, slug )
       `)
       .eq('status', 'active')
-      .in('brand_id', approvedBrandIds)
       .order('created_at', { ascending: false })
+
+    // Include listings user is brand-approved for, PLUS any open_to_all listings
+    if (approvedBrandIds.length > 0) {
+      query = query.or(`brand_id.in.(${approvedBrandIds.join(',')}),open_to_all.eq.true`)
+    } else {
+      query = query.eq('open_to_all', true)
+    }
 
     // Optional filters from query string
     if (req.query.brand_id) {
@@ -264,7 +271,7 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
   try {
     const {
       title, description, pricePounds, quantity,
-      brandId, shippingMode, shippingCostPounds, sku, imageUrls
+      brandId, shippingMode, shippingCostPounds, sku, imageUrls, openToAll
     } = req.body
 
     // --- Validate inputs ---
@@ -317,6 +324,9 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
         shipping_cost_pence: shippingCostPence,
         sku: sku ? xss(sku.trim()).substring(0, 100) : null,
         image_urls: Array.isArray(imageUrls) ? imageUrls.slice(0, 4) : [],
+        // Only suppliers (and admins) can mark a listing as open to all
+        // Retailers cannot set this regardless of what they send
+        open_to_all: req.user.role === 'supplier' ? (openToAll === true) : false,
         status: 'pending_review'  // Admin must approve before it goes live
       })
       .select('id, title, status, created_at')
