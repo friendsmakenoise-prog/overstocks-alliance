@@ -809,3 +809,253 @@ img { max-width: 100%; display: block; }
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ============================================================
+   MOBILE COMPATIBILITY PASS — NEW PAGES
+   Covers: BrandAccessPage, SupplierListingsPage, ProfilePage,
+   DashboardPage retailer notifications, AdminBrandApplicationsPage
+   ============================================================ */
+
+/* ── Brand access page ───────────────────────────────────── */
+.brand-approved-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.brand-approved-row .btn {
+  flex-shrink: 0;
+}
+
+/* ── Supplier listings page ──────────────────────────────── */
+.supplier-filter-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+/* ── Retailer notification banners ───────────────────────── */
+.brand-notification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+.brand-notification-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Profile page ─────────────────────────────────────────── */
+.profile-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.profile-buttons .btn {
+  flex: 1 1 140px;
+  justify-content: center;
+}
+
+/* ── Admin brand applications ─────────────────────────────── */
+.app-header-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  padding: 14px 20px;
+  cursor: pointer;
+  align-items: center;
+}
+.app-approve-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+
+  /* Brand access — approved brand rows stack */
+  .brand-approved-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .brand-approved-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Supplier listings filter bar */
+  .supplier-filter-bar .form-input,
+  .supplier-filter-bar select,
+  .supplier-filter-bar .btn {
+    flex: 1 1 100% !important;
+    width: 100%;
+  }
+
+  /* Retailer notification banners */
+  .brand-notification {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .brand-notification-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .brand-notification-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Profile buttons */
+  .profile-buttons .btn {
+    flex: 1 1 100%;
+  }
+
+  /* Admin brand app headers */
+  .app-header-row {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+  .app-approve-buttons {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Supplier dashboard listing cards */
+  .supplier-listing-row {
+    grid-template-columns: 48px 1fr !important;
+  }
+  .supplier-listing-actions {
+    grid-column: 1 / -1;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    border-left: none !important;
+    border-top: 1px solid var(--border);
+    padding: 10px 12px !important;
+  }
+
+  /* Brand access grid tighter on small screens */
+  .brand-access-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    max-height: 240px !important;
+  }
+
+  /* Dashboard notification dismiss button */
+  .notification-dismiss {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  /* Open to all toggle — full width on mobile */
+  .open-to-all-toggle {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+
+  /* Stat card values with long prices */
+  .stat-card-value {
+    font-size: 18px !important;
+    word-break: break-all;
+  }
+
+  /* Profile page account detail grid — single column */
+  .profile-account-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Brand application expand/collapse arrow hidden */
+  .app-expand-icon {
+    display: none;
+  }
+
+  /* Supplier listings page — open to all button below view */
+  .listing-card-actions-col .btn {
+    font-size: 11px !important;
+    padding: 5px 8px !important;
+  }
+
+  /* Nav: tighter on very small phones */
+  .nav-logo {
+    font-size: 15px !important;
+  }
+  .nav-inner {
+    padding: 0 10px !important;
+  }
+
+  /* Dashboard header text wrap */
+  .dashboard-header h1 {
+    font-size: 26px !important;
+  }
+
+  /* Quick action buttons full width */
+  .quick-actions .btn {
+    width: 100%;
+  }
+}
+
+/* ── Safe area padding for newer iPhones ─────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .nav-mobile-menu.open {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Prevent text selection on buttons (better UX on touch) ─ */
+.btn {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Smooth scrolling for anchor links ───────────────────── */
+html {
+  scroll-padding-top: 70px; /* Account for sticky nav */
+}
+
+/* ── Focus styles — keyboard navigation ──────────────────── */
+.btn:focus-visible,
+.form-input:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* ── Image loading placeholder ───────────────────────────── */
+img {
+  background-color: var(--surface);
+}
+
+/* ── Prevent iOS bounce on modal overlay ─────────────────── */
+.modal-overlay {
+  overscroll-behavior: contain;
+}
+
+/* ── Better tap targets on all interactive elements ─────── */
+@media (hover: none) and (pointer: coarse) {
+  .nav-mobile-menu .nav-link {
+    min-height: 52px;
+  }
+  select.form-input {
+    min-height: 48px;
+  }
+  .stat-card[style*="cursor: pointer"] {
+    min-height: 80px;
+  }
+}
+
+/* Full width buttons on mobile */
+@media (max-width: 480px) {
+  .btn-mobile-full {
+    width: 100% !important;
+  }
+}
