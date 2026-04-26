@@ -11,7 +11,8 @@ export default function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin    = profile?.role === 'admin'
+  const isSupplier = profile?.role === 'supplier'
 
   // Close menu on route change
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
