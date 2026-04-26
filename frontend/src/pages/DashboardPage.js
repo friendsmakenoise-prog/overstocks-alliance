@@ -142,11 +142,15 @@ export default function DashboardPage() {
           {/* Supplier stat cards */}
           <div className="stat-cards" style={{ marginBottom: 28 }}>
             {[
-              { label: 'Active listings', value: activeListings.length },
-              { label: 'Pending review',  value: pendingListings.length },
-              { label: 'Brand reviews',   value: pendingReviews.length, urgent: pendingReviews.length > 0 },
+              { label: 'Active brand listings', value: activeListings.length, onClick: () => navigate('/listings') },
+              { label: 'Pending review',        value: pendingListings.length },
+              { label: 'Brand reviews',         value: pendingReviews.length, urgent: pendingReviews.length > 0 },
             ].map((card, i) => (
-              <div key={i} className={`stat-card ${card.urgent ? 'highlight' : ''}`}>
+              <div key={i}
+                className={`stat-card ${card.urgent ? 'highlight' : ''}`}
+                onClick={card.onClick}
+                style={{ cursor: card.onClick ? 'pointer' : 'default' }}
+              >
                 <div className="stat-card-value">{card.value}</div>
                 <div className="stat-card-label">{card.label}</div>
               </div>
@@ -173,15 +177,15 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Recent listings */}
+              {/* Brand listings */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>My listings</h3>
-                  <button className="btn btn-outline btn-sm" onClick={() => navigate('/my-listings')}>View all →</button>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>Brand listings</h3>
+                  <button className="btn btn-outline btn-sm" onClick={() => navigate('/listings')}>View all →</button>
                 </div>
                 {myListings.length === 0 ? (
                   <div className="card" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)', fontSize: 13 }}>
-                    No listings yet.
+                    No active listings for your brands yet.
                     <br />
                     <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => navigate('/listings/new')}>
                       + Add your first listing
@@ -190,16 +194,26 @@ export default function DashboardPage() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {myListings.slice(0, 5).map(listing => (
-                      <div key={listing.id} className="card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                        <div>
-                          <div style={{ fontWeight: 500, fontSize: 14 }}>{listing.title}</div>
+                      <div
+                        key={listing.id}
+                        className="card"
+                        style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+                        onClick={() => navigate(`/listings/${listing.id}`)}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {listing.title}
+                          </div>
                           <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-                            {listing.brands?.name} · {formatPrice(listing.price_pence)}/unit · {listing.quantity} units
+                            {listing.brands?.name} · {formatPrice(listing.price_pence)}/unit · {listing.quantity} unit{listing.quantity !== 1 ? 's' : ''}
                           </div>
                         </div>
-                        <span className={`badge badge-${listing.status === 'active' ? 'approved' : listing.status === 'pending_review' ? 'pending' : 'draft'}`}>
-                          {listing.status === 'active' ? 'Live' : listing.status === 'pending_review' ? 'Pending' : listing.status}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                          <span className={`badge badge-${listing.status === 'active' ? 'approved' : listing.status === 'pending_review' ? 'pending' : 'draft'}`}>
+                            {listing.status === 'active' ? 'Live' : listing.status === 'pending_review' ? 'Pending' : listing.status}
+                          </span>
+                          <span style={{ color: 'var(--muted)', fontSize: 13 }}>→</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -215,8 +229,8 @@ export default function DashboardPage() {
                   <button className="btn btn-primary" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/listings/new')}>
                     + New listing <span>→</span>
                   </button>
-                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/my-listings')}>
-                    My listings <span>→</span>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/listings')}>
+                    Brand listings <span>→</span>
                   </button>
                   <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/brands')}>
                     My brands <span>→</span>
