@@ -2,9 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0B1628" />
     <title>Overstocks Alliance</title>
+ 
+    <!-- Preconnect to Google Fonts to eliminate font load delay -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ 
+    <!-- Critical inline styles — prevent flash of unstyled content -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+        background: #F7F9FC;
+        color: #0B1628;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+      #root { min-height: 100vh; }
+      /* Prevent layout shift while JS loads */
+      .loading-page {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid #E2E8F0;
+        border-top-color: #0B1628;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
     <div id="root"></div>
