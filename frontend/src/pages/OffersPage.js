@@ -30,7 +30,6 @@ export default function OffersPage() {
 
   const cancelled = new URLSearchParams(location.search).get('cancelled')
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadOffers() }, [])
 
   async function loadOffers() {
