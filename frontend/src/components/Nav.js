@@ -1,183 +1,187 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './lib/AuthContext'
-import ProtectedRoute from './components/ProtectedRoute'
-import Nav from './components/Nav'
-import LoginPage from './pages/LoginPage'
-import SignupPage from './pages/SignupPage'
-import { PendingPage, AccessDeniedPage } from './pages/HoldingPages'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import TermsPage from './pages/TermsPage'
-import DashboardPage from './pages/DashboardPage'
-import AdminDashboardPage from './pages/AdminDashboardPage'
-import ListingsPage from './pages/ListingsPage'
-import ListingDetailPage from './pages/ListingDetailPage'
-import CreateListingPage from './pages/CreateListingPage'
-import MyListingsPage from './pages/MyListingsPage'
-import OffersPage from './pages/OffersPage'
-import OrderPage from './pages/OrderPage'
-import PaymentSettingsPage from './pages/PaymentSettingsPage'
-import BrandAccessPage from './pages/BrandAccessPage'
-import ProfilePage from './pages/ProfilePage'
-import SupplierListingsPage from './pages/SupplierListingsPage'
-import HelpPage from './pages/HelpPage'
-import AdminPage from './pages/AdminPage'
-import AdminFinancePage from './pages/AdminFinancePage'
-import AdminBrandApplicationsPage from './pages/AdminBrandApplicationsPage'
-import AdminUserPage from './pages/AdminUserPage'
-import AdminListingsPage from './pages/AdminListingsPage'
-import './styles/global.css'
+import { useState, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/AuthContext'
+import { api } from '../lib/api'
 
-function Layout({ children }) {
+export default function Nav() {
+  const { user, profile, signOut } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [urgentCount, setUrgentCount] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+
+  const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link'
+  const isAdmin    = profile?.role === 'admin'
+  const isSupplier = profile?.role === 'supplier'
+
+  // Close menu on route change
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+
+  // Poll for urgent items
+  useEffect(() => {
+    if (!profile) return
+    checkUrgent()
+    const interval = setInterval(checkUrgent, 60000)
+    return () => clearInterval(interval)
+  }, [profile])
+
+  async function checkUrgent() {
+    try {
+      if (isAdmin) {
+        const [users, listings, reports] = await Promise.all([
+          api.admin.getUsers({ status: 'pending' }),
+          api.admin.getListings({ status: 'pending_review' }),
+          api.admin.getReports()
+        ])
+        setUrgentCount(
+          (users.users?.length || 0) +
+          (listings.listings?.length || 0) +
+          (reports.reports?.length || 0)
+        )
+      } else if (isSupplier) {
+        // Suppliers only need to know about brand review requests
+        const data = await api.getMyBrandReviews()
+        setUrgentCount((data.reviews || []).filter(r => r.status === 'pending').length)
+      } else {
+        const data = await api.getOffers()
+        const urgent = (data.offers || []).filter(o => {
+          const isSeller = o.seller?.id === profile?.id
+          const isBuyer  = o.buyer?.id  === profile?.id
+          return (
+            (isSeller && o.status === 'pending') ||
+            (isBuyer  && o.status === 'countered') ||
+            (isBuyer  && o.status === 'accepted')
+          )
+        })
+        setUrgentCount(urgent.length)
+      }
+    } catch { /* silent fail */ }
+  }
+
+  async function handleSignOut() {
+    await signOut()
+    navigate('/login')
+  }
+
+  // Build nav links based on role
+  const navLinks = !user || !profile ? [] : isAdmin ? [
+    { to: '/', label: 'Dashboard', badge: urgentCount },
+    { to: '/admin', label: 'Control panel' },
+    { to: '/admin/listings', label: 'Listings & orders' },
+    { to: '/admin/brand-applications', label: 'Brand applications' },
+    { to: '/admin/finance', label: 'Finance' },
+  ] : isSupplier ? [
+    { to: '/', label: 'Dashboard', badge: urgentCount },
+    { to: '/listings/new', label: '+ New listing' },
+    { to: '/supplier/listings', label: 'Brand listings' },
+    { to: '/settings/brands', label: 'Brands' },
+  ] : [
+    { to: '/', label: 'Dashboard', badge: urgentCount },
+    { to: '/listings', label: 'Browse' },
+    { to: '/listings/new', label: '+ New listing' },
+    { to: '/my-listings', label: 'My listings' },
+    { to: '/settings/brands', label: 'Brands' },
+  ]
+
   return (
     <>
-      <Nav />
-      {children}
+      <nav className="nav">
+        <div className="nav-inner">
+          <Link to="/" className="nav-logo">
+            Overstocks <span>Alliance</span>
+          </Link>
+
+          {/* Desktop nav links */}
+          <div className="nav-links">
+            {navLinks.map(link => (
+              <Link key={link.to} to={link.to} className={isActive(link.to)} style={{ position: 'relative' }}>
+                {link.label}
+                {link.badge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 2, right: -4,
+                    background: 'var(--gold)', color: 'var(--navy)',
+                    fontSize: 10, fontWeight: 700,
+                    width: 16, height: 16, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {link.badge > 9 ? '9+' : link.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+            {user && profile && (
+              <>
+                <Link to="/help" className="nav-link" title="Help">
+                  ?
+                </Link>
+                <Link to="/profile" className="nav-handle" title="Edit profile">
+                  {profile.role === 'supplier' ? 'Supplier' : profile.role === 'retailer' ? 'Retailer' : profile.role === 'admin' ? 'Admin' : 'Account'} ↗
+                </Link>
+                <button onClick={handleSignOut} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Sign out
+                </button>
+              </>
+            )}
+            {user && !profile && (
+              <button onClick={handleSignOut} className="nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                Sign out
+              </button>
+            )}
+          </div>
+
+          {/* Mobile hamburger */}
+          {user && (
+            <button
+              className={`nav-hamburger ${menuOpen ? 'open' : ''}`}
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label="Toggle menu"
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          )}
+        </div>
+
+        {/* Mobile dropdown menu */}
+        {user && (
+          <div className={`nav-mobile-menu ${menuOpen ? 'open' : ''}`}>
+            {navLinks.map(link => (
+              <Link key={link.to} to={link.to} className="nav-link" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {link.label}
+                {link.badge > 0 && (
+                  <span style={{
+                    background: 'var(--gold)', color: 'var(--navy)',
+                    fontSize: 11, fontWeight: 700,
+                    padding: '2px 7px', borderRadius: 100
+                  }}>
+                    {link.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+            {profile && (
+              <div className="nav-mobile-handle">
+                <Link to="/profile" style={{ color: 'var(--gold-light)', textDecoration: 'none' }}>
+                  {profile.role === 'supplier' ? 'Supplier' : profile.role === 'retailer' ? 'Retailer' : 'Admin'} account — Edit profile
+                </Link>
+              </div>
+            )}
+            {profile && (
+              <Link to="/help" className="nav-link" style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+                ❓ Help & getting started
+              </Link>
+            )}
+            <button
+              onClick={handleSignOut}
+              className="nav-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', marginTop: 4 }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
+      </nav>
     </>
-  )
-}
-
-// Shows admin dashboard for admins, buyer/seller dashboard for everyone else
-function HomeDashboard() {
-  const { profile } = useAuth()
-  if (profile?.role === 'admin') {
-    return <Layout><AdminDashboardPage /></Layout>
-  }
-  return <Layout><DashboardPage /></Layout>
-}
-
-// Separate component so it can use useAuth inside AuthProvider
-function AppRoutes() {
-  return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login"          element={<LoginPage />} />
-      <Route path="/signup"         element={<SignupPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/terms"          element={<TermsPage />} />
-
-      {/* Holding pages */}
-      <Route path="/pending"       element={<PendingPage />} />
-      <Route path="/access-denied" element={<AccessDeniedPage />} />
-
-      {/* Home — admin gets admin dashboard, others get buyer/seller dashboard */}
-      <Route path="/" element={
-        <ProtectedRoute>
-          <HomeDashboard />
-        </ProtectedRoute>
-      } />
-
-      {/* Listings */}
-      <Route path="/listings" element={
-        <ProtectedRoute>
-          <Layout><ListingsPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/listings/new" element={
-        <ProtectedRoute roles={['supplier', 'retailer']}>
-          <Layout><CreateListingPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/listings/:id" element={
-        <ProtectedRoute>
-          <Layout><ListingDetailPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      {/* Offers + Orders */}
-      <Route path="/offers" element={
-        <ProtectedRoute roles={['retailer']}>
-          <Layout><OffersPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/orders/:id" element={
-        <ProtectedRoute>
-          <Layout><OrderPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      {/* My listings */}
-      <Route path="/my-listings" element={
-        <ProtectedRoute roles={['supplier', 'retailer']}>
-          <Layout><MyListingsPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/help" element={
-        <ProtectedRoute>
-          <Layout><HelpPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <Layout><ProfilePage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/supplier/listings" element={
-        <ProtectedRoute roles={['supplier']}>
-          <Layout><SupplierListingsPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      {/* Settings */}
-      <Route path="/settings/payments" element={
-        <ProtectedRoute roles={['supplier', 'retailer']}>
-          <Layout><PaymentSettingsPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/settings/brands" element={
-        <ProtectedRoute roles={['supplier', 'retailer']}>
-          <Layout><BrandAccessPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      {/* Admin */}
-      <Route path="/admin/finance" element={
-        <ProtectedRoute roles={['admin']}>
-          <Layout><AdminFinancePage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/listings" element={
-        <ProtectedRoute roles={['admin']}>
-          <Layout><AdminListingsPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/users/:id" element={
-        <ProtectedRoute roles={['admin']}>
-          <Layout><AdminUserPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/brand-applications" element={
-        <ProtectedRoute roles={['admin']}>
-          <Layout><AdminBrandApplicationsPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="/admin/*" element={
-        <ProtectedRoute roles={['admin']}>
-          <Layout><AdminPage /></Layout>
-        </ProtectedRoute>
-      } />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  )
-}
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
   )
 }
