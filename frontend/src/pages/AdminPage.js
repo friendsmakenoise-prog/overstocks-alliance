@@ -33,7 +33,6 @@ export default function AdminPage() {
   const [listingSearch, setListingSearch] = useState('')
   const [listingBrandFilter, setListingBrandFilter] = useState('')
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAll() }, [])
 
   async function loadAll() {
