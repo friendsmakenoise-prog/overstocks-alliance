@@ -213,9 +213,10 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params
+    const isAdmin = req.user.role === 'admin'
 
-    // Fetch listing first (without seller info)
-    const { data: listing, error } = await supabaseAdmin
+    // Build query — admins can see any status, others only active
+    let query = supabaseAdmin
       .from('listings')
       .select(`
         id,
@@ -227,34 +228,43 @@ router.get('/:id', requireAuth, async (req, res) => {
         shipping_cost_pence,
         image_urls,
         status,
+        open_to_all,
         view_count,
         created_at,
         brand_id,
         brands ( id, name, slug )
       `)
       .eq('id', id)
-      .eq('status', 'active')
-      .single()
+
+    if (!isAdmin) {
+      query = query.eq('status', 'active')
+    }
+
+    const { data: listing, error } = await query.single()
 
     if (error || !listing) {
       return res.status(404).json({ error: 'Listing not found' })
     }
 
-    // CRITICAL: Re-check brand permission for this specific listing
-    // This prevents IDOR — someone guessing a listing ID gets nothing
-    const hasPermission = await userHasBrandPermission(req.user.id, listing.brand_id)
-
-    if (!hasPermission) {
-      // Return 404 not 403 — don't confirm the listing exists
-      return res.status(404).json({ error: 'Listing not found' })
+    // Admins bypass brand permission check
+    if (!isAdmin) {
+      // Check open_to_all first — any verified retailer can see it
+      if (!listing.open_to_all) {
+        const hasPermission = await userHasBrandPermission(req.user.id, listing.brand_id)
+        if (!hasPermission) {
+          return res.status(404).json({ error: 'Listing not found' })
+        }
+      }
     }
 
-    // Increment view count (fire and forget — don't await)
-    supabaseAdmin
-      .from('listings')
-      .update({ view_count: listing.view_count + 1 })
-      .eq('id', id)
-      .then()
+    // Increment view count (fire and forget)
+    if (!isAdmin) {
+      supabaseAdmin
+        .from('listings')
+        .update({ view_count: (listing.view_count || 0) + 1 })
+        .eq('id', id)
+        .then()
+    }
 
     res.json({ listing })
   } catch (err) {
