@@ -26,7 +26,6 @@ export default function ListingsPage() {
 
   // Refresh permissions on mount — picks up any admin grants/revocations
   // since the last login without requiring a full logout/login cycle
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (user?.id) loadProfile(user.id) }, [])
 
   const approvedBrands = profile?.approvedBrands || []
