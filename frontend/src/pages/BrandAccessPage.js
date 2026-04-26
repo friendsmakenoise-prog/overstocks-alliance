@@ -20,6 +20,7 @@ export default function BrandAccessPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [search, setSearch] = useState('')
+  const [approvedSearch, setApprovedSearch] = useState('')
 
   useEffect(() => { loadAll() }, [profile?.id])
 
@@ -216,6 +217,77 @@ export default function BrandAccessPage() {
             </div>
           ))}
         </div>
+
+
+        {/* Approved brands list — retailer only */}
+        {profile?.role === 'retailer' && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>
+                Your approved brands
+              </h2>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate('/listings')}>
+                Browse all →
+              </button>
+            </div>
+
+            {myPermissions.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>
+                <p>No brands approved yet.</p>
+                <p style={{ marginTop: 4 }}>Use the form below to apply for brand access.</p>
+              </div>
+            ) : (
+              <>
+                {myPermissions.length > 5 && (
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <input
+                      className="form-input"
+                      type="search"
+                      placeholder="Filter your brands…"
+                      value={approvedSearch}
+                      onChange={e => setApprovedSearch(e.target.value)}
+                    />
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {activeBrands
+                    .filter(b => myPermissions.includes(b.id))
+                    .filter(b => !approvedSearch || b.name.toLowerCase().includes(approvedSearch.toLowerCase()))
+                    .map(brand => (
+                      <div key={brand.id} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: 'var(--green-bg)',
+                        border: '1px solid var(--green)',
+                        borderRadius: 'var(--radius)',
+                        gap: 12, flexWrap: 'wrap'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ color: 'var(--green)', fontSize: 14 }}>✓</span>
+                          <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--green)' }}>
+                            {brand.name}
+                          </span>
+                        </div>
+                        <button
+                          className="btn btn-outline btn-sm"
+                          style={{ borderColor: 'var(--green)', color: 'var(--green)', fontSize: 12, flexShrink: 0 }}
+                          onClick={() => navigate('/listings', { state: { brand_id: brand.id, brand_name: brand.name } })}
+                        >
+                          Browse {brand.name} listings →
+                        </button>
+                      </div>
+                    ))
+                  }
+                  {approvedSearch && activeBrands.filter(b => myPermissions.includes(b.id) && b.name.toLowerCase().includes(approvedSearch.toLowerCase())).length === 0 && (
+                    <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', padding: '12px 0' }}>
+                      No approved brands match "{approvedSearch}"
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Approved retailers panel — supplier only */}
         {profile?.role === 'supplier' && showRetailers && (
