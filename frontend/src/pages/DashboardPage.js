@@ -155,7 +155,7 @@ export default function DashboardPage() {
           {/* Supplier stat cards */}
           <div className="stat-cards" style={{ marginBottom: 28 }}>
             {[
-              { label: 'Active brand listings', value: activeListings.length, onClick: () => navigate('/listings') },
+              { label: 'Active brand listings', value: activeListings.length, onClick: () => navigate('/supplier/listings') },
               { label: 'Pending review',        value: pendingListings.length },
               { label: 'Brand reviews',         value: pendingReviews.length, urgent: pendingReviews.length > 0 },
             ].map((card, i) => (
@@ -194,7 +194,7 @@ export default function DashboardPage() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>Brand listings</h3>
-                  <button className="btn btn-outline btn-sm" onClick={() => navigate('/listings')}>View all →</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => navigate('/supplier/listings')}>View all →</button>
                 </div>
                 {myListings.length === 0 ? (
                   <div className="card" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)', fontSize: 13 }}>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                   <button className="btn btn-primary" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/listings/new')}>
                     + New listing <span>→</span>
                   </button>
-                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/listings')}>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/supplier/listings')}>
                     Brand listings <span>→</span>
                   </button>
                   <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/brands')}>
