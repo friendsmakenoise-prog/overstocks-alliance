@@ -236,7 +236,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ minWidth: 160, justifyContent: 'center' }}
+              className="btn-mobile-full" style={{ minWidth: 160, justifyContent: 'center' }}
               disabled={saving}
             >
               {saving ? 'Saving…' : 'Save changes'}
@@ -293,7 +293,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               className="btn btn-outline"
-              style={{ minWidth: 160, justifyContent: 'center' }}
+              className="btn-mobile-full" style={{ minWidth: 160, justifyContent: 'center' }}
               disabled={savingPassword}
             >
               {savingPassword ? 'Updating…' : 'Update password'}
