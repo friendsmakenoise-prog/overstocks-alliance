@@ -46,14 +46,23 @@ export default function DashboardPage() {
   async function loadAll() {
     setLoading(true)
     try {
-      const promises = [api.getOffers(), api.getListings()]
       if (profile?.role === 'supplier') {
-        promises.push(api.getMyBrandReviews())
+        // Suppliers only need their listings and brand reviews
+        const [listingsData, reviewsData] = await Promise.all([
+          api.getListings(),
+          api.getMyBrandReviews()
+        ])
+        setMyListings(listingsData.listings || [])
+        setBrandReviews(reviewsData.reviews || [])
+      } else {
+        // Retailers get the full offer dashboard
+        const [offersData, listingsData] = await Promise.all([
+          api.getOffers(),
+          api.getListings()
+        ])
+        setOffers(offersData.offers || [])
+        setMyListings(listingsData.listings || [])
       }
-      const [offersData, listingsData, reviewsData] = await Promise.all(promises)
-      setOffers(offersData.offers || [])
-      setMyListings(listingsData.listings || [])
-      if (reviewsData) setBrandReviews(reviewsData.reviews || [])
     } catch (err) {
       setError('Failed to load dashboard')
     } finally {
@@ -108,7 +117,126 @@ export default function DashboardPage() {
 
   if (loading) return <div className="loading-page"><div className="spinner" /></div>
 
-  // Categorise offers
+  // ── SUPPLIER DASHBOARD ────────────────────────────────────
+  if (profile?.role === 'supplier') {
+    const pendingReviews = brandReviews.filter(r => r.status === 'pending')
+    const activeListings = myListings.filter(l => l.status === 'active')
+    const pendingListings = myListings.filter(l => l.status === 'pending_review')
+
+    return (
+      <div className="page">
+        <div className="container">
+          <div style={{ marginBottom: 28 }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 32, marginBottom: 4 }}>
+              Dashboard
+            </h1>
+            <p style={{ color: pendingReviews.length > 0 ? 'var(--amber)' : 'var(--slate)', fontSize: 14, fontWeight: pendingReviews.length > 0 ? 500 : 400 }}>
+              {pendingReviews.length > 0
+                ? `⚡ ${pendingReviews.length} brand review${pendingReviews.length !== 1 ? 's' : ''} require your input`
+                : 'Welcome back'}
+            </p>
+          </div>
+
+          {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+          {/* Supplier stat cards */}
+          <div className="stat-cards" style={{ marginBottom: 28 }}>
+            {[
+              { label: 'Active listings', value: activeListings.length },
+              { label: 'Pending review',  value: pendingListings.length },
+              { label: 'Brand reviews',   value: pendingReviews.length, urgent: pendingReviews.length > 0 },
+            ].map((card, i) => (
+              <div key={i} className={`stat-card ${card.urgent ? 'highlight' : ''}`}>
+                <div className="stat-card-value">{card.value}</div>
+                <div className="stat-card-label">{card.label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="layout-main-sidebar">
+            <div>
+              {/* Brand eligibility reviews */}
+              {pendingReviews.length > 0 && (
+                <div className="card" style={{ marginBottom: 20, borderColor: 'var(--amber)', border: '1.5px solid var(--amber)' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 4 }}>
+                    Brand eligibility reviews
+                    <span style={{ marginLeft: 8, background: 'var(--amber)', color: '#fff', fontSize: 12, padding: '2px 8px', borderRadius: 100, fontFamily: 'var(--font-body)', fontWeight: 500 }}>
+                      {pendingReviews.length}
+                    </span>
+                  </h3>
+                  <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
+                    Admin has requested your input on a retailer's brand eligibility.
+                  </p>
+                  {pendingReviews.map(review => (
+                    <BrandReviewCard key={review.id} review={review} onRespond={loadAll} />
+                  ))}
+                </div>
+              )}
+
+              {/* Recent listings */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>My listings</h3>
+                  <button className="btn btn-outline btn-sm" onClick={() => navigate('/my-listings')}>View all →</button>
+                </div>
+                {myListings.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)', fontSize: 13 }}>
+                    No listings yet.
+                    <br />
+                    <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => navigate('/listings/new')}>
+                      + Add your first listing
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {myListings.slice(0, 5).map(listing => (
+                      <div key={listing.id} className="card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <div>
+                          <div style={{ fontWeight: 500, fontSize: 14 }}>{listing.title}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                            {listing.brands?.name} · {formatPrice(listing.price_pence)}/unit · {listing.quantity} units
+                          </div>
+                        </div>
+                        <span className={`badge badge-${listing.status === 'active' ? 'approved' : listing.status === 'pending_review' ? 'pending' : 'draft'}`}>
+                          {listing.status === 'active' ? 'Live' : listing.status === 'pending_review' ? 'Pending' : listing.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sidebar quick actions */}
+            <div>
+              <div className="card">
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginBottom: 14 }}>Quick actions</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button className="btn btn-primary" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/listings/new')}>
+                    + New listing <span>→</span>
+                  </button>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/my-listings')}>
+                    My listings <span>→</span>
+                  </button>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/brands')}>
+                    My brands <span>→</span>
+                  </button>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/profile')}>
+                    My profile <span>→</span>
+                  </button>
+                  <button className="btn btn-outline" style={{ justifyContent: 'space-between' }} onClick={() => navigate('/settings/payments')}>
+                    Payment settings <span>→</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Categorise offers — retailer only from here
   const needsAction = offers.filter(o => {
     const isSeller = o.seller?.id === profile?.id
     const isBuyer  = o.buyer?.id  === profile?.id
