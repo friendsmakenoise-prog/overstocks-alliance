@@ -42,7 +42,7 @@ router.get('/mine', requireAuth, requireRole('supplier'), async (req, res) => {
       .select(`
         id, status, supplier_notes, requested_at, responded_at, expires_at,
         brand:brand_id ( id, name ),
-        applicant:applicant_id ( id, anonymous_handle, role, company_name ),
+        applicant:applicant_id ( id, anonymous_handle, role, company_name, contact_name, phone, website, trading_address ),
         application:brand_application_id ( id, status )
       `)
       .eq('supplier_id', req.user.id)
