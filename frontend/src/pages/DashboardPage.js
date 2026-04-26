@@ -43,7 +43,6 @@ export default function DashboardPage() {
   const [error, setError] = useState('')
 
   // Profile is guaranteed to exist here — ProtectedRoute waits for it
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadAll() }, [profile?.id])
 
   async function loadAll() {
@@ -793,7 +792,6 @@ function BrandReviewCard({ review, onRespond }) {
   // Per-brand decisions: { [applicationId]: true/false }
   const [brandDecisions, setBrandDecisions] = useState({})
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadFamily() }, [review.id])
 
   async function loadFamily() {
