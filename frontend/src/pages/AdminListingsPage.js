@@ -118,7 +118,7 @@ export default function AdminListingsPage() {
           title: editForm.title.trim(),
           price_pence: Math.round(parseFloat(editForm.price_pounds) * 100),
           quantity: parseInt(editForm.quantity),
-          description: editForm.description?.trim() || null,
+          description: editForm.description?.trim() || '',
           open_to_all: editForm.open_to_all,
         })
         .eq('id', listingId)
