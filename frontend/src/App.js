@@ -85,7 +85,7 @@ function AppRoutes() {
 
       {/* Offers + Orders */}
       <Route path="/offers" element={
-        <ProtectedRoute>
+        <ProtectedRoute roles={['retailer']}>
           <Layout><OffersPage /></Layout>
         </ProtectedRoute>
       } />
