@@ -8,16 +8,23 @@ function formatPrice(pence) {
 }
 
 export default function ListingsPage() {
-  const { profile } = useAuth()
+  const { profile, loadProfile, user } = useAuth()
   const navigate = useNavigate()
   const [listings, setListings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showAllState, setShowAllState] = useState(false)
+  const [openToAllOnly, setOpenToAllOnly] = useState(false)
   const [filters, setFilters] = useState({ brand_id: '', min_price: '', max_price: '' })
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('newest')
   const [applying, setApplying] = useState({})
+
+  // Refresh permissions on mount — picks up any admin grants/revocations
+  // since the last login without requiring a full logout/login cycle
+  useEffect(() => {
+    if (user?.id) loadProfile(user.id)
+  }, [])
 
   const approvedBrands = profile?.approvedBrands || []
   const isSupplier = profile?.role === 'supplier'
@@ -72,6 +79,7 @@ export default function ListingsPage() {
       const q = search.toLowerCase()
       return l.title?.toLowerCase().includes(q) || l.brands?.name?.toLowerCase().includes(q)
     })
+    .filter(l => !openToAllOnly || l.open_to_all)
     .sort((a, b) => {
       // Always show authorised listings first when in showAll mode
       if (showAll && a.authorised !== b.authorised) return a.authorised ? -1 : 1
@@ -186,6 +194,16 @@ export default function ListingsPage() {
                 onClick={() => { setSearch(''); setFilters({ brand_id: '', min_price: '', max_price: '' }) }}
               >
                 Clear
+              </button>
+            )}
+            {/* Open to all filter — retailer only */}
+            {!isSupplier && (
+              <button
+                className={`btn btn-sm ${openToAllOnly ? 'btn-gold' : 'btn-outline'}`}
+                onClick={() => setOpenToAllOnly(v => !v)}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {openToAllOnly ? '⭐ Open to all' : '⭐ Open to all'}
               </button>
             )}
           </div>
@@ -318,7 +336,14 @@ export default function ListingsPage() {
                       )}
 
                       <div className="listing-card-body">
-                        <div className="listing-card-brand">{listing.brands?.name}</div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 4 }}>
+                          <div className="listing-card-brand">{listing.brands?.name}</div>
+                          {listing.open_to_all && (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--amber)', background: 'var(--amber-bg)', padding: '2px 7px', borderRadius: 100, border: '1px solid rgba(180,83,9,0.2)', letterSpacing: '0.04em' }}>
+                              OPEN TO ALL
+                            </span>
+                          )}
+                        </div>
                         <div className="listing-card-title">{listing.title}</div>
 
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
