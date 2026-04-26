@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { getCounterpartyCodename, getMyCodename } from '../lib/codenames'
 
@@ -34,6 +35,7 @@ export default function DashboardPage() {
   const [offers, setOffers] = useState([])
   const [myListings, setMyListings] = useState([])
   const [brandReviews, setBrandReviews] = useState([])
+  const [brandAppNotifications, setBrandAppNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(null)
   const [counterForm, setCounterForm] = useState({ offerId: null, price: '', message: '' })
@@ -55,13 +57,24 @@ export default function DashboardPage() {
         setMyListings(listingsData.listings || [])
         setBrandReviews(reviewsData.reviews || [])
       } else {
-        // Retailers get the full offer dashboard
-        const [offersData, listingsData] = await Promise.all([
+        // Retailers get the full offer dashboard + brand application notifications
+        const [offersData, listingsData, appsData] = await Promise.all([
           api.getOffers(),
-          api.getListings()
+          api.getListings(),
+          supabase
+            .from('brand_applications')
+            .select('id, status, brand_id, brand_name_text, is_other, applied_at, brand:brand_id(id, name)')
+            .eq('user_id', profile.id)
+            .in('status', ['approved', 'declined'])
+            .order('applied_at', { ascending: false })
         ])
         setOffers(offersData.offers || [])
         setMyListings(listingsData.listings || [])
+
+        // Filter out dismissed notifications using localStorage
+        const dismissed = JSON.parse(localStorage.getItem('dismissed_brand_notifications') || '[]')
+        const notifications = (appsData.data || []).filter(a => !dismissed.includes(a.id))
+        setBrandAppNotifications(notifications)
       }
     } catch (err) {
       setError('Failed to load dashboard')
@@ -268,6 +281,21 @@ export default function DashboardPage() {
 
   const recentOrders = offers.filter(o => o.status === 'paid').slice(0, 5)
 
+  function dismissNotification(appId) {
+    const dismissed = JSON.parse(localStorage.getItem('dismissed_brand_notifications') || '[]')
+    if (!dismissed.includes(appId)) {
+      localStorage.setItem('dismissed_brand_notifications', JSON.stringify([...dismissed, appId]))
+    }
+    setBrandAppNotifications(prev => prev.filter(a => a.id !== appId))
+  }
+
+  function dismissAll() {
+    const dismissed = JSON.parse(localStorage.getItem('dismissed_brand_notifications') || '[]')
+    const allIds = brandAppNotifications.map(a => a.id)
+    localStorage.setItem('dismissed_brand_notifications', JSON.stringify([...dismissed, ...allIds]))
+    setBrandAppNotifications([])
+  }
+
   return (
     <div className="page">
       <div className="container">
@@ -285,6 +313,77 @@ export default function DashboardPage() {
         </div>
 
         {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+
+        {/* Brand application notifications */}
+        {brandAppNotifications.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--slate)' }}>
+                Brand application updates
+              </span>
+              {brandAppNotifications.length > 1 && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={dismissAll}
+                  style={{ fontSize: 12 }}
+                >
+                  Dismiss all
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {brandAppNotifications.map(app => {
+                const approved = app.status === 'approved'
+                const brandName = app.is_other ? app.brand_name_text : app.brand?.name
+                return (
+                  <div key={app.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 16px',
+                    background: approved ? 'var(--green-bg)' : 'var(--red-bg)',
+                    border: `1px solid ${approved ? 'var(--green)' : 'var(--red)'}`,
+                    borderRadius: 'var(--radius)',
+                    flexWrap: 'wrap'
+                  }}>
+                    <span style={{ fontSize: 18 }}>{approved ? '✓' : '✗'}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: approved ? 'var(--green)' : 'var(--red)' }}>
+                        {approved
+                          ? `Access granted — ${brandName}`
+                          : `Application declined — ${brandName}`
+                        }
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--slate)', marginTop: 2 }}>
+                        {approved
+                          ? `You can now browse and purchase ${brandName} listings.`
+                          : `Your application for ${brandName} was not approved. Contact us if you think this is an error.`
+                        }
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                      {approved && (
+                        <button
+                          className="btn btn-outline btn-sm"
+                          style={{ borderColor: 'var(--green)', color: 'var(--green)', fontSize: 12 }}
+                          onClick={() => navigate('/listings')}
+                        >
+                          Browse listings
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-sm"
+                        style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: 18, padding: '0 4px', lineHeight: 1, cursor: 'pointer' }}
+                        onClick={() => dismissNotification(app.id)}
+                        title="Dismiss"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Summary cards */}
         <div className="stat-cards" style={{ marginBottom: 32 }}>
