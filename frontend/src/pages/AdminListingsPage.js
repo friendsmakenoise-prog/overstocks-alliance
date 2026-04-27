@@ -99,18 +99,13 @@ export default function AdminListingsPage() {
     setSavingEdit(true)
     setError('')
     try {
-      const { error } = await supabase
-        .from('listings')
-        .update({
-          title: editForm.title.trim(),
-          price_pence: Math.round(parseFloat(editForm.price_pounds) * 100),
-          quantity: parseInt(editForm.quantity),
-          description: editForm.description?.trim() || '',
-          open_to_all: editForm.open_to_all,
-        })
-        .eq('id', listingId)
-
-      if (error) throw error
+      await api.admin.updateListing(listingId, {
+        title: editForm.title.trim(),
+        price_pence: Math.round(parseFloat(editForm.price_pounds) * 100),
+        quantity: parseInt(editForm.quantity),
+        description: editForm.description?.trim() || '',
+        open_to_all: editForm.open_to_all,
+      })
       setSuccess('Listing updated')
       setEditingId(null)
       await loadAll()
