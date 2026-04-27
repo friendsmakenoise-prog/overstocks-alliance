@@ -443,6 +443,64 @@ router.post('/listings/:id/remove', async (req, res) => {
 })
 
 /**
+ * POST /api/admin/listings/:id/flag
+ */
+router.post('/listings/:id/flag', async (req, res) => {
+  try {
+    const { reason } = req.body
+    if (!reason?.trim()) return res.status(400).json({ error: 'Reason is required' })
+    const { data, error } = await supabaseAdmin
+      .from('listings').update({ status: 'flagged', admin_notes: reason.trim() })
+      .eq('id', req.params.id).select('id, title').single()
+    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'flag_listing', target_type: 'listing', target_id: req.params.id, metadata: { reason: reason.trim() } })
+    res.json({ message: 'Listing flagged for investigation', listing: data })
+  } catch (err) { res.status(500).json({ error: 'Failed to flag listing' }) }
+})
+
+/**
+ * POST /api/admin/listings/:id/unflag
+ */
+router.post('/listings/:id/unflag', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('listings').update({ status: 'active', admin_notes: null })
+      .eq('id', req.params.id).select('id, title').single()
+    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'unflag_listing', target_type: 'listing', target_id: req.params.id, metadata: {} })
+    res.json({ message: 'Flag cleared — listing reactivated', listing: data })
+  } catch (err) { res.status(500).json({ error: 'Failed to clear flag' }) }
+})
+
+/**
+ * POST /api/admin/listings/:id/pause
+ */
+router.post('/listings/:id/pause', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('listings').update({ status: 'draft' })
+      .eq('id', req.params.id).select('id, title').single()
+    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'pause_listing', target_type: 'listing', target_id: req.params.id, metadata: {} })
+    res.json({ message: 'Listing paused', listing: data })
+  } catch (err) { res.status(500).json({ error: 'Failed to pause listing' }) }
+})
+
+/**
+ * POST /api/admin/listings/:id/reactivate
+ */
+router.post('/listings/:id/reactivate', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('listings').update({ status: 'active', admin_notes: null })
+      .eq('id', req.params.id).select('id, title').single()
+    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'reactivate_listing', target_type: 'listing', target_id: req.params.id, metadata: {} })
+    res.json({ message: 'Listing reactivated', listing: data })
+  } catch (err) { res.status(500).json({ error: 'Failed to reactivate listing' }) }
+})
+
+/**
  * GET /api/admin/reports
  * Reported listings awaiting review
  */
@@ -489,6 +547,38 @@ router.post('/reports/:id/resolve', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to resolve report' })
   }
+})
+
+/**
+ * POST /api/admin/orders/:id/flag
+ */
+router.post('/orders/:id/flag', async (req, res) => {
+  try {
+    const { reason } = req.body
+    if (!reason?.trim()) return res.status(400).json({ error: 'Reason is required' })
+    const { error } = await supabaseAdmin
+      .from('offers').update({ status: 'flagged', admin_notes: reason.trim() })
+      .eq('id', req.params.id)
+    if (error) throw error
+    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'flag_order', target_type: 'offer', target_id: req.params.id, metadata: { reason: reason.trim() } })
+    res.json({ message: 'Order flagged for investigation' })
+  } catch (err) { res.status(500).json({ error: 'Failed to flag order' }) }
+})
+
+/**
+ * POST /api/admin/orders/:id/cancel
+ */
+router.post('/orders/:id/cancel', async (req, res) => {
+  try {
+    const { reason } = req.body
+    if (!reason?.trim()) return res.status(400).json({ error: 'Reason is required' })
+    const { error } = await supabaseAdmin
+      .from('offers').update({ status: 'cancelled', admin_notes: reason.trim() })
+      .eq('id', req.params.id).eq('status', 'paid')
+    if (error) throw error
+    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'cancel_order', target_type: 'offer', target_id: req.params.id, metadata: { reason: reason.trim() } })
+    res.json({ message: 'Order cancelled' })
+  } catch (err) { res.status(500).json({ error: 'Failed to cancel order' }) }
 })
 
 module.exports = router
