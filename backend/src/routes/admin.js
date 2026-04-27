@@ -449,13 +449,25 @@ router.post('/listings/:id/flag', async (req, res) => {
   try {
     const { reason } = req.body
     if (!reason?.trim()) return res.status(400).json({ error: 'Reason is required' })
-    const { data, error } = await supabaseAdmin
-      .from('listings').update({ status: 'flagged', admin_notes: reason.trim() })
-      .eq('id', req.params.id).select('id, title').single()
-    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
-    await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'flag_listing', target_type: 'listing', target_id: req.params.id, metadata: { reason: reason.trim() } })
-    res.json({ message: 'Listing flagged for investigation', listing: data })
-  } catch (err) { res.status(500).json({ error: 'Failed to flag listing' }) }
+
+    const { error } = await supabaseAdmin
+      .from('listings')
+      .update({ status: 'flagged' })
+      .eq('id', req.params.id)
+
+    if (error) throw error
+
+    await supabaseAdmin.from('audit_log').insert({
+      admin_id: req.user.id, action: 'flag_listing',
+      target_type: 'listing', target_id: req.params.id,
+      metadata: { reason: reason.trim() }
+    })
+
+    res.json({ message: 'Listing flagged for investigation' })
+  } catch (err) {
+    console.error('Flag listing error:', err)
+    res.status(500).json({ error: 'Failed to flag listing: ' + err.message })
+  }
 })
 
 /**
@@ -463,13 +475,13 @@ router.post('/listings/:id/flag', async (req, res) => {
  */
 router.post('/listings/:id/unflag', async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('listings').update({ status: 'active', admin_notes: null })
-      .eq('id', req.params.id).select('id, title').single()
-    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+    const { error } = await supabaseAdmin
+      .from('listings').update({ status: 'active' })
+      .eq('id', req.params.id)
+    if (error) throw error
     await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'unflag_listing', target_type: 'listing', target_id: req.params.id, metadata: {} })
-    res.json({ message: 'Flag cleared — listing reactivated', listing: data })
-  } catch (err) { res.status(500).json({ error: 'Failed to clear flag' }) }
+    res.json({ message: 'Flag cleared — listing reactivated' })
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Failed to clear flag: ' + err.message }) }
 })
 
 /**
@@ -477,13 +489,13 @@ router.post('/listings/:id/unflag', async (req, res) => {
  */
 router.post('/listings/:id/pause', async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from('listings').update({ status: 'draft' })
-      .eq('id', req.params.id).select('id, title').single()
-    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+      .eq('id', req.params.id)
+    if (error) throw error
     await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'pause_listing', target_type: 'listing', target_id: req.params.id, metadata: {} })
-    res.json({ message: 'Listing paused', listing: data })
-  } catch (err) { res.status(500).json({ error: 'Failed to pause listing' }) }
+    res.json({ message: 'Listing paused' })
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Failed to pause listing: ' + err.message }) }
 })
 
 /**
@@ -491,13 +503,13 @@ router.post('/listings/:id/pause', async (req, res) => {
  */
 router.post('/listings/:id/reactivate', async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from('listings').update({ status: 'active', admin_notes: null })
-      .eq('id', req.params.id).select('id, title').single()
-    if (error || !data) return res.status(404).json({ error: 'Listing not found' })
+    const { error } = await supabaseAdmin
+      .from('listings').update({ status: 'active' })
+      .eq('id', req.params.id)
+    if (error) throw error
     await supabaseAdmin.from('audit_log').insert({ admin_id: req.user.id, action: 'reactivate_listing', target_type: 'listing', target_id: req.params.id, metadata: {} })
-    res.json({ message: 'Listing reactivated', listing: data })
-  } catch (err) { res.status(500).json({ error: 'Failed to reactivate listing' }) }
+    res.json({ message: 'Listing reactivated' })
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Failed to reactivate listing: ' + err.message }) }
 })
 
 /**
