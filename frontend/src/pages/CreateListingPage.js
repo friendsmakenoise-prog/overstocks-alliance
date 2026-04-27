@@ -17,7 +17,8 @@ export default function CreateListingPage() {
   const [form, setForm] = useState({
     title: '', description: '', pricePounds: '',
     quantity: '1', brandId: '', shippingMode: 'buyer_arranges',
-    shippingCostPounds: '', sku: '', openToAll: false
+    shippingCostPounds: '', sku: '', openToAll: false,
+    shippingInfo: '', stockOutsideUK: false
   })
   const [images, setImages] = useState([]) // { file, preview, uploading, url, error }
   const [loading, setLoading] = useState(false)
@@ -120,6 +121,8 @@ export default function CreateListingPage() {
         pricePounds: parseFloat(form.pricePounds),
         quantity: parseInt(form.quantity) || 1,
         shippingCostPounds: form.shippingMode === 'included' ? parseFloat(form.shippingCostPounds) : undefined,
+        shippingInfo: form.shippingInfo.trim() || undefined,
+        stockOutsideUK: form.stockOutsideUK || false,
         imageUrls
       })
       navigate('/listings', { state: { message: 'Listing submitted for review' } })
@@ -366,6 +369,49 @@ export default function CreateListingPage() {
               )}
             </div>
 
+            {/* Shipping info — optional logistics details */}
+            <div className="form-group">
+              <label className="form-label">Shipping information (optional)</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                value={form.shippingInfo}
+                onChange={set('shippingInfo')}
+                placeholder="e.g. 2 pallets, approx 200kg, 120x80x100cm each. Suitable for pallet courier. Buyer arranges collection or courier."
+                style={{ resize: 'none' }}
+                maxLength={500}
+              />
+              <span className="form-hint">
+                Help buyers plan logistics — include number of boxes or pallets, approximate weight and dimensions. Avoid location details that could identify you.
+              </span>
+            </div>
+
+            {/* Stock outside UK */}
+            <div style={{
+              padding: '12px 14px',
+              background: form.stockOutsideUK ? 'var(--amber-bg)' : 'var(--surface)',
+              border: `1.5px solid ${form.stockOutsideUK ? 'var(--amber)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius)',
+              transition: 'all 0.15s'
+            }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={form.stockOutsideUK || false}
+                  onChange={e => setForm(f => ({ ...f, stockOutsideUK: e.target.checked }))}
+                  style={{ accentColor: 'var(--amber)', marginTop: 2, flexShrink: 0 }}
+                />
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: 14, color: form.stockOutsideUK ? 'var(--amber)' : 'var(--navy)' }}>
+                    Stock located outside the UK
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--slate)', marginTop: 2, lineHeight: 1.5 }}>
+                    Tick if this stock is held outside the UK. Buyers will be advised that import duties, customs clearance, or additional shipping costs may apply.
+                  </div>
+                </div>
+              </label>
+            </div>
+
             {/* Open to all toggle — suppliers only */}
             {isSupplier && (
               <div style={{
@@ -401,7 +447,7 @@ export default function CreateListingPage() {
             )}
 
             <div className="alert alert-info" style={{ marginTop: 8 }}>
-              🔒 Your company name and contact details will never be shown to other users. You'll be identified only as <strong>{profile?.anonymous_handle}</strong>.
+              🔒 Your company name and contact details are never visible to other members. Each transaction generates a unique anonymous codename for both parties — your identity is fully protected throughout the trading process.
             </div>
 
             <button
