@@ -85,7 +85,7 @@ export default function AdminUserPage() {
         case 'approve':  await api.admin.approveUser(id); setSuccess('User approved'); break
         case 'suspend':  await api.admin.suspendUser(id); setSuccess('User suspended'); break
         case 'reject':   await api.admin.rejectUser(id, 'Account cancelled by admin'); setSuccess('Account cancelled'); break
-        case 'reinstate':await supabase.from('user_profiles').update({ status: 'approved' }).eq('id', id); setSuccess('User reinstated'); break
+        case 'reinstate':await api.admin.approveUser(id); setSuccess('User reinstated'); break
       }
       setConfirmAction(null)
       await loadAll()
@@ -98,8 +98,8 @@ export default function AdminUserPage() {
       switch (action) {
         case 'approve':    await api.admin.approveListing(listingId); setSuccess('Listing approved'); break
         case 'remove':     await api.admin.removeListing(listingId, listingActionNote); setSuccess('Listing removed'); break
-        case 'pause':      await supabase.from('listings').update({ status: 'draft' }).eq('id', listingId); setSuccess('Listing paused'); break
-        case 'reactivate': await supabase.from('listings').update({ status: 'pending_review' }).eq('id', listingId); setSuccess('Listing resubmitted'); break
+        case 'pause':      await api.admin.pauseListing(listingId); setSuccess('Listing paused'); break
+        case 'reactivate': await api.admin.reactivateListing(listingId); setSuccess('Listing resubmitted'); break
       }
       setListingAction(null); setListingActionNote('')
       await loadAll()
