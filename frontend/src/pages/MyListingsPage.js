@@ -35,7 +35,7 @@ export default function MyListingsPage() {
         .from('listings')
         .select(`
           id, title, description, price_pence, quantity,
-          shipping_mode, shipping_cost_pence, image_urls, open_to_all,
+          shipping_mode, shipping_cost_pence, image_urls, open_to_all, shipping_info, stock_outside_uk,
           status, sku, created_at, updated_at,
           brands ( id, name )
         `)
@@ -63,7 +63,9 @@ export default function MyListingsPage() {
       shippingMode: listing.shipping_mode,
       shippingCostPounds: listing.shipping_cost_pence ? (listing.shipping_cost_pence / 100).toFixed(2) : '',
       sku: listing.sku || '',
-      openToAll: listing.open_to_all || false
+      openToAll: listing.open_to_all || false,
+      shippingInfo: listing.shipping_info || '',
+      stockOutsideUK: listing.stock_outside_uk || false
     })
   }
 
@@ -86,6 +88,8 @@ export default function MyListingsPage() {
           ? Math.round(parseFloat(editForm.shippingCostPounds) * 100)
           : null,
         sku: editForm.sku || null,
+        shipping_info: editForm.shippingInfo?.trim() || null,
+        stock_outside_uk: editForm.stockOutsideUK || false,
         // Suppliers can control open_to_all on their own listings
         // Retailers cannot — value stays unchanged for them
         ...(isSupplier ? { open_to_all: editForm.openToAll } : {}),
@@ -413,6 +417,30 @@ export default function MyListingsPage() {
                         </div>
                       )}
                     </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Shipping information (optional)</label>
+                      <textarea
+                        className="form-input" rows={2}
+                        value={editForm.shippingInfo || ''}
+                        onChange={e => setEditForm(f => ({ ...f, shippingInfo: e.target.value }))}
+                        placeholder="e.g. 2 pallets, approx 200kg. Available for collection from [region]."
+                        style={{ resize: 'none' }}
+                        maxLength={500}
+                      />
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer', marginTop: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={editForm.stockOutsideUK || false}
+                        onChange={e => setEditForm(f => ({ ...f, stockOutsideUK: e.target.checked }))}
+                        style={{ accentColor: 'var(--amber)' }}
+                      />
+                      <span style={{ color: editForm.stockOutsideUK ? 'var(--amber)' : 'var(--slate)', fontWeight: editForm.stockOutsideUK ? 500 : 400 }}>
+                        Stock located outside the UK
+                      </span>
+                    </label>
 
                     {/* Open to all — suppliers only */}
                     {isSupplier && (
