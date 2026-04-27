@@ -36,7 +36,7 @@ router.get('/all', requireAuth, async (req, res) => {
       .select(`
         id, title, description, price_pence, quantity,
         shipping_mode, shipping_cost_pence, image_urls,
-        status, open_to_all, created_at, brand_id,
+        status, open_to_all, shipping_info, stock_outside_uk, created_at, brand_id,
         brands ( id, name, slug )
       `)
       .eq('status', 'active')
@@ -294,7 +294,7 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
   try {
     const {
       title, description, pricePounds, quantity,
-      brandId, shippingMode, shippingCostPounds, sku, imageUrls, openToAll
+      brandId, shippingMode, shippingCostPounds, sku, imageUrls, openToAll, shippingInfo, stockOutsideUK
     } = req.body
 
     // --- Validate inputs ---
@@ -350,6 +350,8 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
         // Only suppliers (and admins) can mark a listing as open to all
         // Retailers cannot set this regardless of what they send
         open_to_all: req.user.role === 'supplier' ? (openToAll === true) : false,
+        shipping_info: shippingInfo ? xss(shippingInfo.trim()).substring(0, 500) : null,
+        stock_outside_uk: stockOutsideUK === true,
         status: 'pending_review'  // Admin must approve before it goes live
       })
       .select('id, title, status, created_at')
