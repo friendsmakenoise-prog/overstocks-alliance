@@ -51,33 +51,19 @@ export default function AdminListingsPage() {
 
   async function loadAll() {
     setLoading(true)
+    setError('')
     try {
-      const [listingsResp, brandsResp] = await Promise.all([
+      const [listingsResp, brandsResp, ordersResp] = await Promise.all([
         api.admin.getListings({}),
-        api.admin.getBrands()
+        api.admin.getBrands(),
+        api.admin.getOrders()
       ])
       setListings(listingsResp.listings || [])
       setBrands(brandsResp.brands || [])
-
-      // Load recent paid/flagged orders — only use statuses that exist in the enum
-      const { data: paidOrders, error: ordersError } = await supabase
-        .from('offers')
-        .select(`
-          id, status, quantity, agreed_price_pence, offered_price_pence,
-          platform_fee_pence, created_at, updated_at,
-          listing:listing_id ( id, title, brands(name) ),
-          buyer:buyer_id ( id, anonymous_handle ),
-          seller:seller_id ( id, anonymous_handle )
-        `)
-        .eq('status', 'paid')
-        .order('updated_at', { ascending: false })
-        .limit(100)
-
-      if (ordersError) console.warn('Orders query warning:', ordersError)
-      setOrders(paidOrders || [])
-
+      setOrders(ordersResp.orders || [])
     } catch (err) {
-      setError('Failed to load data')
+      console.error('Failed to load data:', err)
+      setError('Failed to load data — ' + err.message)
     } finally {
       setLoading(false)
     }
