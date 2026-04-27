@@ -339,7 +339,7 @@ router.get('/listings', async (req, res) => {
       .select(`
         id, title, price_pence, quantity, status,
         shipping_mode, shipping_cost_pence,
-        image_urls, reported_count, created_at,
+        image_urls, reported_count, open_to_all, admin_notes, created_at,
         brands(id, name),
         seller:seller_id ( id, company_name, anonymous_handle, email )
       `)
