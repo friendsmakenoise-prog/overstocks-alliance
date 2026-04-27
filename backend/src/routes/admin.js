@@ -443,6 +443,42 @@ router.post('/listings/:id/remove', async (req, res) => {
 })
 
 /**
+ * POST /api/admin/listings/:id/update
+ * Admin: update listing fields
+ */
+router.post('/listings/:id/update', async (req, res) => {
+  try {
+    const { title, price_pence, quantity, description, open_to_all } = req.body
+
+    const { error } = await supabaseAdmin
+      .from('listings')
+      .update({
+        title: title?.trim(),
+        price_pence: Math.round(price_pence),
+        quantity: parseInt(quantity),
+        description: description?.trim() || '',
+        open_to_all: open_to_all === true,
+      })
+      .eq('id', req.params.id)
+
+    if (error) throw error
+
+    await supabaseAdmin.from('audit_log').insert({
+      admin_id: req.user.id,
+      action: 'edit_listing',
+      target_type: 'listing',
+      target_id: req.params.id,
+      metadata: { title, price_pence, quantity, open_to_all }
+    })
+
+    res.json({ message: 'Listing updated' })
+  } catch (err) {
+    console.error('Admin update listing error:', err)
+    res.status(500).json({ error: 'Failed to update listing: ' + err.message })
+  }
+})
+
+/**
  * GET /api/admin/orders
  * Returns recent paid orders for admin overview
  */
