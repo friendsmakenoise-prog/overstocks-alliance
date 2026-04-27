@@ -176,14 +176,41 @@ export default function ListingDetailPage() {
                 )}
               </div>
 
+              {/* Stock outside UK warning */}
+              {listing.stock_outside_uk && (
+                <div style={{
+                  padding: '10px 14px', background: 'var(--amber-bg)',
+                  border: '1px solid rgba(180,83,9,0.25)',
+                  borderRadius: 'var(--radius)', fontSize: 13,
+                  color: 'var(--amber)', marginBottom: 8
+                }}>
+                  🌍 Stock located outside the UK — import duties, customs clearance, or additional shipping costs may apply.
+                </div>
+              )}
+
               {/* Shipping */}
               <div style={{
                 padding: '12px 14px', background: 'var(--surface)',
                 borderRadius: 'var(--radius)', fontSize: 13,
-                color: 'var(--slate)', marginBottom: 16
+                color: 'var(--slate)', marginBottom: listing.shipping_info ? 8 : 16
               }}>
                 📦 {shippingLine}
               </div>
+
+              {/* Shipping info */}
+              {listing.shipping_info && (
+                <div style={{
+                  padding: '12px 14px', background: 'var(--surface)',
+                  borderRadius: 'var(--radius)', fontSize: 13,
+                  color: 'var(--slate)', marginBottom: 16,
+                  lineHeight: 1.6, whiteSpace: 'pre-line'
+                }}>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                    Shipping details
+                  </div>
+                  {listing.shipping_info}
+                </div>
+              )}
 
               {/* Seller anonymity notice */}
               <div style={{
@@ -193,7 +220,7 @@ export default function ListingDetailPage() {
                 fontSize: 12, color: 'var(--amber)',
                 marginBottom: 20
               }}>
-                🔒 Seller identity is protected. You'll connect through our secure platform only.
+                🔒 Seller identity is protected. A unique anonymous codename is assigned to both parties for each transaction.
               </div>
 
               {/* CTA — opens offer modal */}
