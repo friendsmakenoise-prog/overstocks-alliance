@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import { api } from '../lib/api'
 
 function formatPrice(pence) {
@@ -144,11 +143,11 @@ export default function AdminListingsPage() {
           setSuccess('Listing approved and live')
           break
         case 'pause':
-          await supabase.from('listings').update({ status: 'draft' }).eq('id', listingId)
+          await api.admin.pauseListing(listingId)
           setSuccess('Listing paused')
           break
         case 'reactivate':
-          await supabase.from('listings').update({ status: 'active' }).eq('id', listingId)
+          await api.admin.reactivateListing(listingId)
           setSuccess('Listing reactivated')
           break
         case 'remove':
@@ -156,9 +155,8 @@ export default function AdminListingsPage() {
           setSuccess('Listing removed')
           break
         case 'flag':
-          await supabase.from('listings').update({ status: 'flagged', admin_notes: note }).eq('id', listingId)
-          await supabase.from('audit_log').insert({ admin_id: (await supabase.auth.getUser()).data.user.id, action: 'flag_listing', target_type: 'listing', target_id: listingId, metadata: { reason: note } })
-          setSuccess('Listing flagged for investigation')
+          await api.admin.flagListing(listingId, note)
+          setSuccess('Listing flagged for investigation — it is now hidden from buyers')
           break
       }
       setConfirming(null)
@@ -174,21 +172,8 @@ export default function AdminListingsPage() {
   async function cancelOrder(orderId, reason) {
     setError('')
     try {
-      await supabase
-        .from('offers')
-        .update({ status: 'cancelled', admin_notes: reason })
-        .eq('id', orderId)
-        .eq('status', 'paid')
-
-      await supabase.from('audit_log').insert({
-        admin_id: (await supabase.auth.getUser()).data.user.id,
-        action: 'cancel_order',
-        target_type: 'offer',
-        target_id: orderId,
-        metadata: { reason }
-      })
-
-      setSuccess('Order cancelled — buyer and seller should be contacted directly to arrange any refund')
+      await api.admin.cancelOrder(orderId, reason)
+      setSuccess('Order cancelled — remember to process any refund manually through Stripe')
       setCancellingOrder(null)
       setCancelReason('')
       await loadAll()
@@ -200,19 +185,7 @@ export default function AdminListingsPage() {
   async function flagOrder(orderId, reason) {
     setError('')
     try {
-      await supabase
-        .from('offers')
-        .update({ status: 'flagged', admin_notes: reason })
-        .eq('id', orderId)
-
-      await supabase.from('audit_log').insert({
-        admin_id: (await supabase.auth.getUser()).data.user.id,
-        action: 'flag_order',
-        target_type: 'offer',
-        target_id: orderId,
-        metadata: { reason }
-      })
-
+      await api.admin.flagOrder(orderId, reason)
       setSuccess('Order flagged for investigation')
       setFlagging(null)
       setFlagReason('')
