@@ -98,15 +98,17 @@ export default function ListingDetailPage() {
           {/* Left: Images + description */}
           <div>
             {listing.image_urls?.length > 0 ? (
-              <img
-                src={listing.image_urls[0]}
-                alt={listing.title}
-                style={{
-                  width: '100%', borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--border)', marginBottom: 24,
-                  maxHeight: 480, objectFit: 'cover'
-                }}
-              />
+              <div style={{
+                width: '100%', height: 360, borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--border)', marginBottom: 24,
+                overflow: 'hidden', background: 'var(--surface)'
+              }}>
+                <img
+                  src={listing.image_urls[0]}
+                  alt={listing.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
             ) : (
               <div style={{
                 width: '100%', height: 320, borderRadius: 'var(--radius-lg)',
