@@ -58,18 +58,22 @@ export default function DashboardPage() {
         setBrandReviews(reviewsData.reviews || [])
       } else {
         // Retailers get the full offer dashboard + brand application notifications
-        const [offersData, listingsData, appsData] = await Promise.all([
+        const [offersData, appsData, myListingsData] = await Promise.all([
           api.getOffers(),
-          api.getListings(),
           supabase
             .from('brand_applications')
             .select('id, status, brand_id, brand_name_text, is_other, applied_at, brand:brand_id(id, name)')
             .eq('user_id', profile.id)
             .in('status', ['approved', 'declined'])
-            .order('applied_at', { ascending: false })
+            .order('applied_at', { ascending: false }),
+          supabase
+            .from('listings')
+            .select('id, status')
+            .eq('seller_id', profile.id)
+            .neq('status', 'removed')
         ])
         setOffers(offersData.offers || [])
-        setMyListings(listingsData.listings || [])
+        setMyListings(myListingsData.data || [])
 
         // Filter out dismissed notifications using localStorage
         const dismissed = JSON.parse(localStorage.getItem('dismissed_brand_notifications') || '[]')
