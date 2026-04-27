@@ -94,6 +94,7 @@ export const api = {
     getBrands:     ()            => apiRequest('GET', '/api/admin/brands'),
     createBrand:   (name)        => apiRequest('POST', '/api/admin/brands', { name }),
     getListings:   (params = {}) => apiRequest('GET', '/api/admin/listings?' + new URLSearchParams(params)),
+    getOrders:     ()            => apiRequest('GET', '/api/admin/orders'),
     approveListing:   (id)         => apiRequest('POST', `/api/admin/listings/${id}/approve`),
     removeListing:    (id, reason) => apiRequest('POST', `/api/admin/listings/${id}/remove`, { reason }),
     flagListing:      (id, reason) => apiRequest('POST', `/api/admin/listings/${id}/flag`, { reason }),
