@@ -59,8 +59,8 @@ export default function AdminListingsPage() {
       setListings(listingsResp.listings || [])
       setBrands(brandsResp.brands || [])
 
-      // Load recent paid orders
-      const { data: paidOrders } = await supabase
+      // Load recent paid/flagged orders — only use statuses that exist in the enum
+      const { data: paidOrders, error: ordersError } = await supabase
         .from('offers')
         .select(`
           id, status, quantity, agreed_price_pence, offered_price_pence,
@@ -69,9 +69,11 @@ export default function AdminListingsPage() {
           buyer:buyer_id ( id, anonymous_handle ),
           seller:seller_id ( id, anonymous_handle )
         `)
-        .in('status', ['paid', 'flagged'])
+        .eq('status', 'paid')
         .order('updated_at', { ascending: false })
         .limit(100)
+
+      if (ordersError) console.warn('Orders query warning:', ordersError)
       setOrders(paidOrders || [])
 
     } catch (err) {
@@ -276,8 +278,8 @@ export default function AdminListingsPage() {
                   <div className="listing-card-row">
 
                     {/* Thumbnail */}
-                    <div style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64, cursor: 'pointer' }}
-                      onClick={() => listing.status === 'active' && navigate(`/listings/${listing.id}`)}>
+                    <div style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 64, cursor: ['active', 'flagged', 'draft'].includes(listing.status) ? 'pointer' : 'default' }}
+                      onClick={() => navigate(`/listings/${listing.id}`)}>
                       {listing.image_urls?.length > 0 ? (
                         <img src={listing.image_urls[0]} alt="" style={{ width: '100%', height: 64, objectFit: 'cover' }} />
                       ) : (
@@ -303,10 +305,22 @@ export default function AdminListingsPage() {
                         <span>{listing.seller?.company_name}</span>
                         <span>{new Date(listing.created_at).toLocaleDateString('en-GB')}</span>
                       </div>
+                      {listing.status === 'flagged' && listing.admin_notes && (
+                        <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 6, padding: '4px 8px', background: 'var(--red-bg)', borderRadius: 4 }}>
+                          🚩 Flag reason: {listing.admin_notes}
+                        </div>
+                      )}
                     </div>
 
                     {/* Action buttons */}
                     <div className="listing-card-actions-col">
+                      {/* View — available for all statuses admin can access */}
+                      {listing.status !== 'removed' && (
+                        <button className="btn btn-outline btn-sm" style={{ justifyContent: 'center', fontSize: 12 }}
+                          onClick={() => navigate(`/listings/${listing.id}`)}>
+                          👁 View
+                        </button>
+                      )}
                       <button className="btn btn-outline btn-sm" style={{ justifyContent: 'center', fontSize: 12 }}
                         onClick={() => isEditing ? setEditingId(null) : startEdit(listing)}>
                         {isEditing ? 'Cancel edit' : '✏️ Edit'}
