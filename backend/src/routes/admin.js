@@ -443,6 +443,33 @@ router.post('/listings/:id/remove', async (req, res) => {
 })
 
 /**
+ * GET /api/admin/orders
+ * Returns recent paid orders for admin overview
+ */
+router.get('/orders', async (req, res) => {
+  try {
+    const { data: orders, error } = await supabaseAdmin
+      .from('offers')
+      .select(`
+        id, status, quantity, agreed_price_pence, offered_price_pence,
+        platform_fee_pence, seller_payout_pence, created_at, updated_at, admin_notes,
+        listing:listing_id ( id, title, brands(name) ),
+        buyer:buyer_id ( id, anonymous_handle ),
+        seller:seller_id ( id, anonymous_handle )
+      `)
+      .in('status', ['paid', 'cancelled'])
+      .order('updated_at', { ascending: false })
+      .limit(200)
+
+    if (error) throw error
+    res.json({ orders })
+  } catch (err) {
+    console.error('Admin orders error:', err)
+    res.status(500).json({ error: 'Failed to fetch orders' })
+  }
+})
+
+/**
  * POST /api/admin/listings/:id/flag
  */
 router.post('/listings/:id/flag', async (req, res) => {
