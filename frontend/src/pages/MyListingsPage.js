@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 
+const MAX_IMAGES = 4
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
 function formatPrice(pence) {
   return `£${(pence / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
 }
@@ -52,6 +55,43 @@ export default function MyListingsPage() {
   }
 
   const isSupplier = profile?.role === 'supplier'
+  const [editImages, setEditImages] = useState([]) // { url, file, preview, uploading }
+
+  async function uploadNewImages() {
+    const uploaded = []
+    const updated = [...editImages]
+    for (let i = 0; i < updated.length; i++) {
+      if (updated[i].url) { uploaded.push(updated[i].url); continue }
+      updated[i] = { ...updated[i], uploading: true }
+      setEditImages([...updated])
+      try {
+        const file = updated[i].file
+        const ext = file.name.split('.').pop()
+        const path = `listings/${profile.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${ext}`
+        const { error: uploadError } = await supabase.storage.from('listing-images').upload(path, file, { contentType: file.type })
+        if (uploadError) throw uploadError
+        const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path)
+        updated[i] = { ...updated[i], uploading: false, url: publicUrl }
+        setEditImages([...updated])
+        uploaded.push(publicUrl)
+      } catch (err) {
+        updated[i] = { ...updated[i], uploading: false, error: 'Upload failed' }
+        setEditImages([...updated])
+        throw new Error('Image upload failed')
+      }
+    }
+    return uploaded
+  }
+
+  function handleEditImageSelect(e) {
+    const files = Array.from(e.target.files || [])
+    const remaining = MAX_IMAGES - editImages.length
+    const valid = files.filter(f => ALLOWED_TYPES.includes(f.type) && f.size < 5 * 1024 * 1024).slice(0, remaining)
+    setEditImages(prev => [...prev, ...valid.map(file => ({
+      file, preview: URL.createObjectURL(file), url: null, uploading: false
+    }))])
+    e.target.value = ''
+  }
 
   function startEdit(listing) {
     setEditingId(listing.id)
@@ -67,11 +107,13 @@ export default function MyListingsPage() {
       shippingInfo: listing.shipping_info || '',
       stockOutsideUK: listing.stock_outside_uk || false
     })
+    setEditImages((listing.image_urls || []).map(url => ({ url, file: null, preview: url, uploading: false })))
   }
 
   function cancelEdit() {
     setEditingId(null)
     setEditForm({})
+    setEditImages([])
   }
 
   async function saveEdit(listingId) {
@@ -90,15 +132,18 @@ export default function MyListingsPage() {
         sku: editForm.sku || null,
         shipping_info: editForm.shippingInfo?.trim() || null,
         stock_outside_uk: editForm.stockOutsideUK || false,
-        // Suppliers can control open_to_all on their own listings
-        // Retailers cannot — value stays unchanged for them
         ...(isSupplier ? { open_to_all: editForm.openToAll } : {}),
-        // Re-submit for review if it was previously active
         status: 'pending_review'
       }
 
       if (!updates.title) return setError('Title is required')
       if (isNaN(updates.price_pence) || updates.price_pence <= 0) return setError('Please enter a valid price')
+
+      // Upload any new images and collect all URLs
+      const imageUrls = await uploadNewImages()
+      if (imageUrls.length > 0) {
+        updates.image_urls = imageUrls
+      }
 
       const { error } = await supabase
         .from('listings')
@@ -215,15 +260,15 @@ export default function MyListingsPage() {
 
                     {/* Image thumbnail */}
                     <div style={{
-                      width: 80, background: 'var(--surface)',
+                      width: 80, height: 80, background: 'var(--surface)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      borderRight: '1px solid var(--border)'
+                      borderRight: '1px solid var(--border)', overflow: 'hidden', flexShrink: 0
                     }}>
                       {listing.image_urls?.length > 0 ? (
                         <img
                           src={listing.image_urls[0]}
                           alt={listing.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}
                         />
                       ) : (
                         <span style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', padding: 8 }}>
@@ -326,6 +371,43 @@ export default function MyListingsPage() {
                     </div>
 
                     {error && <div className="alert alert-error">{error}</div>}
+
+                    <div className="form-group">
+                      <label className="form-label">Images</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 8, marginBottom: 8 }}>
+                        {editImages.map((img, i) => (
+                          <div key={i} style={{ position: 'relative', paddingTop: '100%', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                            <img
+                              src={img.preview}
+                              alt=""
+                              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', padding: 4 }}
+                            />
+                            {img.uploading && (
+                              <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div className="spinner" style={{ width: 20, height: 20 }} />
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setEditImages(prev => prev.filter((_, j) => j !== i))}
+                              style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: '50%', background: 'var(--red)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        {editImages.length < MAX_IMAGES && (
+                          <label style={{ paddingTop: '100%', position: 'relative', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '2px dashed var(--border)', cursor: 'pointer', display: 'block' }}>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 12 }}>
+                              <span style={{ fontSize: 20 }}>+</span>
+                              <span>Add</span>
+                            </div>
+                            <input type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleEditImageSelect} />
+                          </label>
+                        )}
+                      </div>
+                      <span className="form-hint">Up to {MAX_IMAGES} images. JPG, PNG or WebP, max 5MB each.</span>
+                    </div>
 
                     <div className="form-group">
                       <label className="form-label">Title *</label>
