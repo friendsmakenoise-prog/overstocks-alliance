@@ -39,6 +39,8 @@ export default function ListingsPage() {
   useEffect(() => { loadListings() }, [filters, showAll])
 
   async function loadListings() {
+    // Always refresh profile first so approvedBrands is current
+    if (user?.id) await loadProfile(user.id)
     setLoading(true)
     try {
       const params = {}
