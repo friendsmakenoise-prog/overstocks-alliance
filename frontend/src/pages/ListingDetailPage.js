@@ -181,12 +181,22 @@ export default function ListingDetailPage() {
               {/* Stock outside UK warning */}
               {listing.stock_outside_uk && (
                 <div style={{
-                  padding: '10px 14px', background: 'var(--amber-bg)',
+                  padding: '12px 14px', background: 'var(--amber-bg)',
                   border: '1px solid rgba(180,83,9,0.25)',
                   borderRadius: 'var(--radius)', fontSize: 13,
                   color: 'var(--amber)', marginBottom: 8
                 }}>
-                  🌍 Stock located outside the UK — import duties, customs clearance, or additional shipping costs may apply.
+                  <div style={{ fontWeight: 500, marginBottom: 4 }}>🌍 Stock located outside the UK</div>
+                  <div style={{ lineHeight: 1.6 }}>
+                    Import duties, customs clearance, or additional shipping costs may apply.
+                    {listing.stock_country && <span> Country: <strong>{listing.stock_country}</strong>.</span>}
+                    {listing.incoterms && listing.incoterms !== 'Other' && <span> Terms: <strong>{listing.incoterms}</strong>.</span>}
+                  </div>
+                  {listing.customs_notes && (
+                    <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px solid rgba(180,83,9,0.2)', fontSize: 12 }}>
+                      {listing.customs_notes}
+                    </div>
+                  )}
                 </div>
               )}
 
