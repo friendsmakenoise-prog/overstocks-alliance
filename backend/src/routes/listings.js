@@ -36,7 +36,7 @@ router.get('/all', requireAuth, async (req, res) => {
       .select(`
         id, title, description, price_pence, quantity,
         shipping_mode, shipping_cost_pence, image_urls,
-        status, open_to_all, shipping_info, stock_outside_uk, created_at, brand_id,
+        status, open_to_all, shipping_info, stock_outside_uk, stock_country, incoterms, customs_notes, stock_country, incoterms, customs_notes, created_at, brand_id,
         brands ( id, name, slug )
       `)
       .eq('status', 'active')
@@ -150,6 +150,9 @@ router.get('/', requireAuth, async (req, res) => {
         open_to_all,
         shipping_info,
         stock_outside_uk,
+        stock_country,
+        incoterms,
+        customs_notes,
         view_count,
         created_at,
         brand_id,
@@ -296,7 +299,8 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
   try {
     const {
       title, description, pricePounds, quantity,
-      brandId, shippingMode, shippingCostPounds, sku, imageUrls, openToAll, shippingInfo, stockOutsideUK
+      brandId, shippingMode, shippingCostPounds, sku, imageUrls, openToAll,
+      shippingInfo, stockOutsideUK, stockCountry, incoterms, customsNotes
     } = req.body
 
     // --- Validate inputs ---
@@ -354,6 +358,9 @@ router.post('/', requireAuth, requireRole('supplier', 'retailer'), async (req, r
         open_to_all: req.user.role === 'supplier' ? (openToAll === true) : false,
         shipping_info: shippingInfo ? xss(shippingInfo.trim()).substring(0, 500) : null,
         stock_outside_uk: stockOutsideUK === true,
+        stock_country: stockCountry ? xss(stockCountry.trim()).substring(0, 100) : null,
+        incoterms: incoterms || null,
+        customs_notes: customsNotes ? xss(customsNotes.trim()).substring(0, 500) : null,
         status: 'pending_review'  // Admin must approve before it goes live
       })
       .select('id, title, status, created_at')
