@@ -38,7 +38,7 @@ export default function MyListingsPage() {
         .from('listings')
         .select(`
           id, title, description, price_pence, quantity,
-          shipping_mode, shipping_cost_pence, image_urls, open_to_all, shipping_info, stock_outside_uk,
+          shipping_mode, shipping_cost_pence, image_urls, open_to_all, shipping_info, stock_outside_uk, stock_country, incoterms, customs_notes,
           status, sku, created_at, updated_at,
           brands ( id, name )
         `)
@@ -105,7 +105,10 @@ export default function MyListingsPage() {
       sku: listing.sku || '',
       openToAll: listing.open_to_all || false,
       shippingInfo: listing.shipping_info || '',
-      stockOutsideUK: listing.stock_outside_uk || false
+      stockOutsideUK: listing.stock_outside_uk || false,
+      stockCountry: listing.stock_country || '',
+      incoterms: listing.incoterms || '',
+      customsNotes: listing.customs_notes || ''
     })
     setEditImages((listing.image_urls || []).map(url => ({ url, file: null, preview: url, uploading: false })))
   }
@@ -132,6 +135,9 @@ export default function MyListingsPage() {
         sku: editForm.sku || null,
         shipping_info: editForm.shippingInfo?.trim() || null,
         stock_outside_uk: editForm.stockOutsideUK || false,
+        stock_country: editForm.stockCountry?.trim() || null,
+        incoterms: editForm.incoterms || null,
+        customs_notes: editForm.customsNotes?.trim() || null,
         ...(isSupplier ? { open_to_all: editForm.openToAll } : {}),
         status: 'pending_review'
       }
@@ -523,6 +529,41 @@ export default function MyListingsPage() {
                         Stock located outside the UK
                       </span>
                     </label>
+
+
+                    {/* Expanded international fields */}
+                    {editForm.stockOutsideUK && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(180,83,9,0.2)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="grid-2">
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Country of stock location</label>
+                            <input className="form-input" type="text"
+                              value={editForm.stockCountry || ''}
+                              onChange={e => setEditForm(f => ({ ...f, stockCountry: e.target.value }))}
+                              placeholder="e.g. Germany, Netherlands" maxLength={100} />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">Collection / delivery terms</label>
+                            <select className="form-input" value={editForm.incoterms || ''} onChange={e => setEditForm(f => ({ ...f, incoterms: e.target.value }))}>
+                              <option value="">Not specified</option>
+                              <option value="EXW">EXW — Ex Works (buyer collects)</option>
+                              <option value="FCA">FCA — Free Carrier</option>
+                              <option value="DAP">DAP — Delivered at Place</option>
+                              <option value="DDP">DDP — Delivered Duty Paid</option>
+                              <option value="Other">Other — see customs notes</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label">Customs / import notes (optional)</label>
+                          <textarea className="form-input" rows={2}
+                            value={editForm.customsNotes || ''}
+                            onChange={e => setEditForm(f => ({ ...f, customsNotes: e.target.value }))}
+                            placeholder="e.g. VAT registered in EU. UK import duty applicable."
+                            style={{ resize: 'none' }} maxLength={500} />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Open to all — suppliers only */}
                     {isSupplier && (
