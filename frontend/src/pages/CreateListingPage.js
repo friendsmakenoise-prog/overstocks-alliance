@@ -18,7 +18,7 @@ export default function CreateListingPage() {
     title: '', description: '', pricePounds: '',
     quantity: '1', brandId: '', shippingMode: 'buyer_arranges',
     shippingCostPounds: '', sku: '', openToAll: false,
-    shippingInfo: '', stockOutsideUK: false
+    shippingInfo: '', stockOutsideUK: false, stockCountry: '', incoterms: '', customsNotes: ''
   })
   const [images, setImages] = useState([]) // { file, preview, uploading, url, error }
   const [loading, setLoading] = useState(false)
@@ -123,6 +123,9 @@ export default function CreateListingPage() {
         shippingCostPounds: form.shippingMode === 'included' ? parseFloat(form.shippingCostPounds) : undefined,
         shippingInfo: form.shippingInfo.trim() || undefined,
         stockOutsideUK: form.stockOutsideUK || false,
+        stockCountry: form.stockCountry?.trim() || undefined,
+        incoterms: form.incoterms || undefined,
+        customsNotes: form.customsNotes?.trim() || undefined,
         imageUrls
       })
       navigate('/listings', { state: { message: 'Listing submitted for review' } })
@@ -410,6 +413,44 @@ export default function CreateListingPage() {
                   </div>
                 </div>
               </label>
+              {/* Expanded international details */}
+              {form.stockOutsideUK && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(180,83,9,0.2)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="grid-2">
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Country of stock location</label>
+                      <input
+                        className="form-input" type="text"
+                        value={form.stockCountry || ''}
+                        onChange={e => setForm(f => ({ ...f, stockCountry: e.target.value }))}
+                        placeholder="e.g. Germany, Netherlands"
+                        maxLength={100}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Collection / delivery terms</label>
+                      <select className="form-input" value={form.incoterms || ''} onChange={e => setForm(f => ({ ...f, incoterms: e.target.value }))}>
+                        <option value="">Not specified</option>
+                        <option value="EXW">EXW — Ex Works (buyer collects)</option>
+                        <option value="FCA">FCA — Free Carrier</option>
+                        <option value="DAP">DAP — Delivered at Place</option>
+                        <option value="DDP">DDP — Delivered Duty Paid</option>
+                        <option value="Other">Other — see customs notes</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Customs / import notes (optional)</label>
+                    <textarea
+                      className="form-input" rows={2}
+                      value={form.customsNotes || ''}
+                      onChange={e => setForm(f => ({ ...f, customsNotes: e.target.value }))}
+                      placeholder="e.g. VAT registered in EU. UK import duty applicable. Happy to provide commercial invoice."
+                      style={{ resize: 'none' }} maxLength={500}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Open to all toggle — suppliers only */}
