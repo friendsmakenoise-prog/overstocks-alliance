@@ -22,7 +22,14 @@ export default function BrandAccessPage() {
   const [search, setSearch] = useState('')
   const [approvedSearch, setApprovedSearch] = useState('')
 
-  useEffect(() => { loadAll() }, [profile?.id])
+  useEffect(() => { if (profile?.id) loadAll() }, [profile?.id])
+
+  // Also reload whenever the page is focused — picks up permission changes
+  useEffect(() => {
+    function onFocus() { if (profile?.id) loadAll() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [profile?.id])
 
   // Refresh permissions on mount to pick up admin changes
   useEffect(() => { if (user?.id) loadProfile(user.id) }, [])
