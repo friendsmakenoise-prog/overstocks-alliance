@@ -361,6 +361,11 @@ export default function ListingsPage() {
                               OPEN TO ALL
                             </span>
                           )}
+                          {listing.stock_outside_uk && (
+                            <span style={{ fontSize: 10, fontWeight: 600, color: '#1D4ED8', background: '#EBF4FF', padding: '2px 7px', borderRadius: 100, border: '1px solid rgba(29,78,216,0.2)', letterSpacing: '0.04em' }}>
+                              🌍 OVERSEAS
+                            </span>
+                          )}
                         </div>
                         <div className="listing-card-title">{listing.title}</div>
 
