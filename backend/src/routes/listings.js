@@ -148,6 +148,8 @@ router.get('/', requireAuth, async (req, res) => {
         image_urls,
         status,
         open_to_all,
+        shipping_info,
+        stock_outside_uk,
         view_count,
         created_at,
         brand_id,
